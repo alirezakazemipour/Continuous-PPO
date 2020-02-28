@@ -6,12 +6,13 @@ from test import evaluate_model
 
 
 class Train:
-    def __init__(self, env, agent, max_steps, max_episode, epochs, mini_batch_size, epsilon):
+    def __init__(self, env, agent, max_steps_per_episode, max_iter, epochs, mini_batch_size, epsilon, horizon):
         self.env = env
         self.agent = agent
-        self.max_steps = max_steps
-        self.max_episode = max_episode
+        self.max_steps_per_episode = max_steps_per_episode
+        self.max_iter = max_iter
         self.epsilon = epsilon
+        self.horizon = horizon
         self.episode_counter = 0
         self.epochs = epochs
         self.mini_batch_size = mini_batch_size
@@ -28,7 +29,9 @@ class Train:
             idxes = np.random.randint(0, full_batch_size, mini_batch_size)
             yield states[idxes], actions[idxes], returns[idxes], advs[idxes]
 
-    def train(self, states, actions, rewards, dones, values, next_value, episode_reward):
+#region train
+    def train(self, trajectories):
+        print(len(trajectories))
 
         self.agent.set_to_train_mode()
         returns = self.get_gae(rewards, deepcopy(values), next_value, dones)
@@ -61,44 +64,57 @@ class Train:
                 self.agent.optimize(total_loss)
 
                 return total_loss, entropy, rewards
+#endregion
 
     def equalize_policies(self):
         self.agent.set_weights()
 
     def step(self):
-        for episode in range(self.max_episode):
+        for iter in range(self.max_iter):
 
             self.agent.set_to_train_mode()
-            episode_reward = 0
-            state = self.env.reset()
-
             states = []
             actions = []
             rewards = []
             dones = []
             values = []
-            next_value = 0
+            next_values = []
+            trajectories = []
+            horizon = 0
 
-            for step in range(self.max_steps):
-                action = self.agent.choose_action(state)
-                value = self.agent.get_value(state)
-                next_state, reward, done, _ = self.env.step(action)
+            while horizon < self.horizon:
+                episode_reward = 0
+                state = self.env.reset()
+                for _ in range(self.max_steps_per_episode):
+                    horizon += 1
+                    action = self.agent.choose_action(state)
+                    value = self.agent.get_value(state)
+                    next_state, reward, done, _ = self.env.step(action)
 
-                episode_reward += reward
-                states.append(state)
-                actions.append(action)
-                rewards.append(reward)
-                dones.append(reward)
-                values.append(value)
+                    episode_reward += reward
+                    states.append(state)
+                    actions.append(action)
+                    rewards.append(reward)
+                    dones.append(reward)
+                    values.append(value)
 
-                if done:
-                    next_value = 0
-                    break
-                else:
-                    next_value = self.agent.get_value(next_state)
-                    state = next_state
+                    if done:
+                        next_value = 0
+                        next_values.append(next_value)
+                        trajectories.append([states, actions, rewards, dones, values, next_values])
+                        break
+                    else:
+                        next_value = self.agent.get_value(next_state)
+                        next_values.append(next_value)
+                        state = next_state
 
-            self.train(states, actions, rewards, dones, values, next_value, episode_reward)
+                    if horizon == self.horizon:
+                        trajectories.append([states, actions, rewards, dones, values, next_values])
+                        break
+
+
+
+            self.train(trajectories)
 
 
     def get_gae(self, rewards, values, next_values, dones, gamma=0.99, lam=0.95):

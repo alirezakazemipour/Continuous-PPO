@@ -45,7 +45,7 @@ class Agent:
         state = from_numpy(state).float().to(self.device)
         value = self.critic(state)
 
-        return value
+        return value.detach().cpu().numpy()
 
     def optimize(self, actor_loss, critic_loss):
 

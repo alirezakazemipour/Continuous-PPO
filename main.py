@@ -12,13 +12,15 @@ action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
 # stack_shape = (84, 84, 4)
-max_steps = 2048
-max_episode = 15000
+max_steps_per_episode = 10000
+max_iter = 15000
 actor_lr = 4e-4
 critic_lr = 4e-4
 epochs = 10
 clip_range = 0.3
 mini_batch_size = 32
+
+T = 2048
 
 if __name__ == "__main__":
     print(f"number of states:{n_states[0]}\n"
@@ -35,8 +37,9 @@ if __name__ == "__main__":
 
     trainer = Train(env=env,
                     agent=agent,
-                    max_steps=max_steps,
-                    max_episode=max_episode,
+                    horizon=T,
+                    max_steps_per_episode=max_steps_per_episode,
+                    max_iter=max_iter,
                     epochs=epochs,
                     mini_batch_size=mini_batch_size,
                     epsilon=clip_range
