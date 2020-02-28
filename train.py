@@ -29,17 +29,15 @@ class Train:
             idxes = np.random.randint(0, full_batch_size, mini_batch_size)
             yield states[idxes], actions[idxes], returns[idxes], advs[idxes]
 
-#region train
-    def train(self, trajectories):
-        print(len(trajectories))
-
+    # region train
+    def train(self, states, actions, rewards, dones, values):
         self.agent.set_to_train_mode()
-        returns = self.get_gae(rewards, deepcopy(values), next_value, dones)
+        returns = self.get_gae(rewards, deepcopy(values), dones)
 
-        advs = returns - np.vstack(values).reshape((sum([len(values[i]) for i in range(self.n_workers)]), 1))
+        advs = returns - np.vstack(values[:-1])
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         states = np.vstack(states)
-        actions = np.squeeze(np.vstack(actions), axis=-1)
+        actions = np.vstack(actions)
 
         for epoch in range(self.epochs):
             for state, action, q_value, adv in self.choose_mini_batch(self.mini_batch_size,
@@ -64,7 +62,8 @@ class Train:
                 self.agent.optimize(total_loss)
 
                 return total_loss, entropy, rewards
-#endregion
+
+    # endregion
 
     def equalize_policies(self):
         self.agent.set_weights()
@@ -78,58 +77,51 @@ class Train:
             rewards = []
             dones = []
             values = []
-            next_values = []
-            trajectories = []
-            horizon = 0
 
-            while horizon < self.horizon:
-                episode_reward = 0
-                state = self.env.reset()
-                for _ in range(self.max_steps_per_episode):
-                    horizon += 1
-                    action = self.agent.choose_action(state)
-                    value = self.agent.get_value(state)
-                    next_state, reward, done, _ = self.env.step(action)
+            step_counter = 0
+            episode_reward = 0
+            state = self.env.reset()
+            while True:
+                step_counter += 1
 
-                    episode_reward += reward
-                    states.append(state)
-                    actions.append(action)
-                    rewards.append(reward)
-                    dones.append(reward)
-                    values.append(value)
+                action = self.agent.choose_action(state)
+                value = self.agent.get_value(state)
+                next_state, reward, done, _ = self.env.step(action)
 
+                episode_reward += reward
+                states.append(state)
+                actions.append(action)
+                rewards.append(reward)
+                dones.append(done)
+                values.append(value)
+
+                if done:
+                    episode_reward = 0
+                    state = self.env.reset()
+                else:
+                    state = next_state
+
+                if step_counter > 0 and step_counter % self.horizon == 0:
                     if done:
                         next_value = 0
-                        next_values.append(next_value)
-                        trajectories.append([states, actions, rewards, dones, values, next_values])
-                        break
+                        values.append(next_value)
                     else:
                         next_value = self.agent.get_value(next_state)
-                        next_values.append(next_value)
-                        state = next_state
-
-                    if horizon == self.horizon:
-                        trajectories.append([states, actions, rewards, dones, values, next_values])
-                        break
+                        values.append(next_value)
+                    total_loss, entropy, rewards = self.train(states, actions, rewards, dones, values)
 
 
+    def get_gae(self, rewards, values, dones, gamma=0.99, lam=0.95):
 
-            self.train(trajectories)
+        returns = []
+        gae = 0
 
+        for step in reversed(range(len(rewards))):
+            delta = rewards[step] + gamma * (values[step + 1]) * (1 - dones[step]) -  values[step]
+            gae = delta + gamma * lam * (1 - dones[step]) * gae
+            returns.insert(0, gae + values[step])
 
-    def get_gae(self, rewards, values, next_values, dones, gamma=0.99, lam=0.95):
-        returns = [[] for _ in range(self.n_workers)]
-
-        for worker in range(self.n_workers):
-            values[worker] = values[worker] + [next_values[worker]]
-            gae = 0
-            for step in reversed(range(len(rewards[worker]))):
-                delta = rewards[worker][step] + gamma * (values[worker][step + 1]) * (1 - dones[worker][step]) - \
-                        values[worker][step]
-                gae = delta + gamma * lam * (1 - dones[worker][step]) * gae
-                returns[worker].insert(0, gae + values[worker][step])
-
-        return np.vstack(returns).reshape((sum([len(returns[i]) for i in range(self.n_workers)]), 1))
+        return np.vstack(returns)
 
     def calculate_ratio(self, states, actions):
         new_policy_log = self.calculate_log_probs(self.agent.new_policy, states, actions)
