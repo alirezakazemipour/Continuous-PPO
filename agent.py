@@ -25,8 +25,8 @@ class Agent:
 
         self.old_policy_actor.load_state_dict(self.new_policy_actor.state_dict())
 
-        self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr)
-        self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr)
+        self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr, eps=1e-5)
+        self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr, eps=1e-5)
 
     def choose_action(self, state):
 

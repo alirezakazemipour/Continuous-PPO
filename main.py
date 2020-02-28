@@ -14,11 +14,11 @@ n_actions = test_env.action_space.shape[0]
 # stack_shape = (84, 84, 4)
 max_steps_per_episode = 10000
 max_iter = 15000
-actor_lr = 4e-4
-critic_lr = 4e-4
+actor_lr = 3e-4
+critic_lr = 3e-4
 epochs = 10
-clip_range = 0.3
-mini_batch_size = 32
+clip_range = 0.2
+mini_batch_size = 64
 
 T = 2048
 

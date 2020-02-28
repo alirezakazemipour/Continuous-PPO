@@ -1,8 +1,7 @@
 from copy import deepcopy
 import torch
 import numpy as np
-from torch import multiprocessing as mp
-from test import evaluate_model
+import time
 
 
 class Train:
@@ -13,12 +12,11 @@ class Train:
         self.max_iter = max_iter
         self.epsilon = epsilon
         self.horizon = horizon
-        self.episode_counter = 0
+        self.iteration_counter = 0
         self.epochs = epochs
         self.mini_batch_size = mini_batch_size
 
-        mp.set_start_method('spawn')
-        mp.set_sharing_strategy('file_system')
+        self.start_time = 0
 
         self.global_running_r = []
 
@@ -47,19 +45,19 @@ class Train:
                 adv = torch.Tensor(adv).to(self.agent.device)
                 q_value = torch.Tensor(q_value).to(self.agent.device).view((self.mini_batch_size, 1))
 
-                dist, value = self.agent.new_policy(state)
+                dist = self.agent.new_policy_actor(state)
+                value = self.agent.critic(state)
                 entropy = dist.entropy().mean()
-                new_log_prob = self.calculate_log_probs(self.agent.new_policy, state, action)
-                old_log_prob = self.calculate_log_probs(self.agent.old_policy, state, action)
+                new_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, state, action)
+                old_log_prob = self.calculate_log_probs(self.agent.old_policy_actor, state, action)
                 # ratio = torch.exp(new_log_prob) / (torch.exp(old_log_prob) + 1e-8)
                 ratio = (new_log_prob - old_log_prob).exp()
 
                 actor_loss = self.compute_ac_loss(ratio, adv)
-                # crtitic_loss = self.agent.critic_loss(q_value, value)
                 critic_loss = 0.5 * (q_value - value).pow(2).mean()
 
-                total_loss = critic_loss + actor_loss - 0.01 * entropy
-                self.agent.optimize(total_loss)
+                total_loss = critic_loss + actor_loss - 0.0 * entropy
+                self.agent.optimize(actor_loss, critic_loss)
 
                 return total_loss, entropy, rewards
 
@@ -70,6 +68,7 @@ class Train:
 
     def step(self):
         for iter in range(self.max_iter):
+            self.start_time = time.time()
 
             self.agent.set_to_train_mode()
             states = []
@@ -79,8 +78,9 @@ class Train:
             values = []
 
             step_counter = 0
-            episode_reward = 0
+            iteration_reward = 0
             state = self.env.reset()
+            self.iteration_counter += 1
             while True:
                 step_counter += 1
 
@@ -88,7 +88,7 @@ class Train:
                 value = self.agent.get_value(state)
                 next_state, reward, done, _ = self.env.step(action)
 
-                episode_reward += reward
+                iteration_reward += reward
                 states.append(state)
                 actions.append(action)
                 rewards.append(reward)
@@ -96,7 +96,6 @@ class Train:
                 values.append(value)
 
                 if done:
-                    episode_reward = 0
                     state = self.env.reset()
                 else:
                     state = next_state
@@ -108,8 +107,10 @@ class Train:
                     else:
                         next_value = self.agent.get_value(next_state)
                         values.append(next_value)
-                    total_loss, entropy, rewards = self.train(states, actions, rewards, dones, values)
+                    break
 
+            total_loss, entropy, rewards = self.train(states, actions, rewards, dones, values)
+            self.print_logs(total_loss=total_loss, entropy=entropy, rewards=iteration_reward)
 
     def get_gae(self, rewards, values, dones, gamma=0.99, lam=0.95):
 
@@ -117,22 +118,22 @@ class Train:
         gae = 0
 
         for step in reversed(range(len(rewards))):
-            delta = rewards[step] + gamma * (values[step + 1]) * (1 - dones[step]) -  values[step]
+            delta = rewards[step] + gamma * (values[step + 1]) * (1 - dones[step]) - values[step]
             gae = delta + gamma * lam * (1 - dones[step]) * gae
             returns.insert(0, gae + values[step])
 
         return np.vstack(returns)
 
-    def calculate_ratio(self, states, actions):
-        new_policy_log = self.calculate_log_probs(self.agent.new_policy, states, actions)
-        old_policy_log = self.calculate_log_probs(self.agent.old_policy, states, actions)
-        # ratio = torch.exp(new_policy_log) / (torch.exp(old_policy_log) + 1e-8)
-        ratio = torch.exp(old_policy_log - new_policy_log)
-        return ratio
+    # def calculate_ratio(self, states, actions):
+    #     new_policy_log = self.calculate_log_probs(self.agent.new_policy, states, actions)
+    #     old_policy_log = self.calculate_log_probs(self.agent.old_policy, states, actions)
+    #     # ratio = torch.exp(new_policy_log) / (torch.exp(old_policy_log) + 1e-8)
+    #     ratio = torch.exp(old_policy_log - new_policy_log)
+    #     return ratio
 
     @staticmethod
     def calculate_log_probs(model, states, actions):
-        policy_distribution, _ = model(states)
+        policy_distribution = model(states)
         return policy_distribution.log_prob(actions)
 
     def compute_ac_loss(self, ratio, adv):
@@ -143,13 +144,15 @@ class Train:
         return loss
 
     def print_logs(self, total_loss, entropy, rewards):
-        if self.episode_counter == 150:
-            self.global_running_r.append(rewards.item())
+        if self.iteration_counter == 1:
+            self.global_running_r.append(rewards)
         else:
-            self.global_running_r.append(self.global_running_r[-1] * 0.99 + rewards.item() * 0.01)
+            self.global_running_r.append(self.global_running_r[-1] * 0.99 + rewards * 0.01)
 
-        print(f"Ep:{self.episode_counter}| "
-              f"Ep_Reward:{rewards.item():3.3f}| "
-              f"Running_reward:{self.global_running_r[-1]:3.3f}| "
-              f"Total_loss:{total_loss.item():3.3f}| "
-              f"Entropy:{entropy.item():3.3f}| ")
+        if self.iteration_counter % 100 == 0:
+            print(f"Iter:{self.iteration_counter}| "
+                  f"Iter_Reward:{rewards:3.3f}| "
+                  f"Running_reward:{self.global_running_r[-1]:3.3f}| "
+                  f"Total_loss:{total_loss.item():3.3f}| "
+                  f"Entropy:{entropy.item():3.3f}| "
+                  f"Iter_duration:{time.time() - self.start_time:3.3f}")
