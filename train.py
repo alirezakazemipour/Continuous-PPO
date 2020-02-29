@@ -43,7 +43,7 @@ class Train:
             for state, action, q_value, adv in self.choose_mini_batch(self.mini_batch_size,
                                                                       states, actions, returns, advs):
                 self.state_rms.update(state)
-                state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5, 5)
+                state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
                 state = torch.Tensor(state).to(self.agent.device)
                 action = torch.Tensor(action).to(self.agent.device)
                 adv = torch.Tensor(adv).to(self.agent.device)
