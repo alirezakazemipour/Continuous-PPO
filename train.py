@@ -2,6 +2,7 @@ from copy import deepcopy
 import torch
 import numpy as np
 import time
+from running_mean_std import RunningMeanStd
 
 
 class Train:
@@ -17,6 +18,7 @@ class Train:
         self.mini_batch_size = mini_batch_size
 
         self.start_time = 0
+        self.state_rms = RunningMeanStd(shape=(self.agent.n_states,))
 
         self.global_running_r = []
 
@@ -40,6 +42,8 @@ class Train:
         for epoch in range(self.epochs):
             for state, action, q_value, adv in self.choose_mini_batch(self.mini_batch_size,
                                                                       states, actions, returns, advs):
+                self.state_rms.update(state)
+                state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5, 5)
                 state = torch.Tensor(state).to(self.agent.device)
                 action = torch.Tensor(action).to(self.agent.device)
                 adv = torch.Tensor(adv).to(self.agent.device)
