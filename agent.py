@@ -3,6 +3,7 @@ from torch.optim import Adam
 from torch import from_numpy
 import numpy as np
 import torch
+from torch.optim.lr_scheduler import LambdaLR
 
 
 class Agent:
@@ -27,6 +28,13 @@ class Agent:
 
         self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr, eps=1e-5)
         self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr, eps=1e-5)
+
+        self.scheduler = lambda step: max(1.0 - float(step * 2048 / 1e+6), 0)
+
+        self.critic_scheduler = LambdaLR(self.critic_optimizer, lr_lambda=self.scheduler)
+
+        self.actor_scheduler = LambdaLR(self.actor_optimizer, lr_lambda=self.scheduler)
+
 
     def choose_action(self, state):
 
@@ -58,6 +66,11 @@ class Agent:
         critic_loss.backward()
         # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
         self.critic_optimizer.step()
+
+    def schedule_lr(self):
+        self.actor_scheduler.step()
+        self.critic_scheduler.step()
+
 
     def set_weights(self):
         for old_params, new_params in zip(self.old_policy_actor.parameters(), self.new_policy_actor.parameters()):
