@@ -53,17 +53,18 @@ class Train:
                 value = self.agent.critic(state)
                 entropy = dist.entropy().mean()
                 new_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, state, action)
-                old_log_prob = self.calculate_log_probs(self.agent.old_policy_actor, state, action)
-                # ratio = torch.exp(new_log_prob) / (torch.exp(old_log_prob) + 1e-8)
+                with torch.no_grad():
+                    old_log_prob = self.calculate_log_probs(self.agent.old_policy_actor, state, action)
                 ratio = (new_log_prob - old_log_prob).exp()
+                # print(ratio.mean())
 
                 actor_loss = self.compute_ac_loss(ratio, adv)
                 critic_loss = 0.5 * (q_value - value).pow(2).mean()
 
-                total_loss = 0.5 * critic_loss + actor_loss - 0.0 * entropy
+                total_loss = 1 * critic_loss + actor_loss - 0.0 * entropy
 
-                # self.agent.optimize(actor_loss, critic_loss)
-                self.agent.optimize(total_loss)
+                self.agent.optimize(actor_loss, critic_loss)
+                # self.agent.optimize(total_loss)
 
                 return total_loss, entropy, rewards
 
@@ -84,6 +85,7 @@ class Train:
             rewards = []
             dones = []
             values = []
+            log_probs = []
 
             step_counter = 0
             iteration_reward = 0
@@ -117,12 +119,10 @@ class Train:
                         next_value = self.agent.get_value(next_state)
                         values.append(next_value)
                     break
-
             total_loss, entropy, rewards = self.train(states, actions, rewards, dones, values)
-            self.equalize_policies()
             evaluation_rewards = evaluate_model(self.agent, deepcopy(self.env), deepcopy(self.state_rms))
             self.print_logs(total_loss, entropy, evaluation_rewards)
-            self.agent.schedule_lr()
+            # self.agent.schedule_lr()
         self.agent.save_weights()
 
     @staticmethod

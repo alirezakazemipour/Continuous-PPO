@@ -4,6 +4,7 @@ from torch import from_numpy
 import numpy as np
 import torch
 from torch.optim.lr_scheduler import LambdaLR
+from copy import deepcopy
 
 
 class Agent:
@@ -24,7 +25,8 @@ class Agent:
 
         self.critic = Critic(n_states=self.n_states).to(self.device)
 
-        self.old_policy_actor.load_state_dict(self.new_policy_actor.state_dict())
+        self.old_policy_actor.load_state_dict(deepcopy(self.new_policy_actor.state_dict()))
+        # self.old_policy_actor.eval()
 
         self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr, eps=1e-5)
         self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr, eps=1e-5)
@@ -52,16 +54,16 @@ class Agent:
 
         return value.detach().cpu().numpy()
 
-    def optimize(self, loss):
+    def optimize(self, actor_loss, critic_loss):
         self.actor_optimizer.zero_grad()
-        # actor_loss.backward()
-        loss.backward(retain_graph=True)
+        actor_loss.backward()
+        # loss.backward(retain_graph=True)
         # torch.nn.utils.clip_grad_norm_(self.new_policy_actor.parameters(), 0.5)
         self.actor_optimizer.step()
 
         self.critic_optimizer.zero_grad()
-        # critic_loss.backward()
-        loss.backward()
+        critic_loss.backward()
+        # loss.backward()
         # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
         self.critic_optimizer.step()
 

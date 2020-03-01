@@ -16,6 +16,7 @@ eggs/
 .eggs/
 .idea/
 *.pth
+*.txt
 vid/
 logs/
 lib/
