@@ -6,10 +6,9 @@ from running_mean_std import RunningMeanStd
 
 
 class Train:
-    def __init__(self, env, agent, max_steps_per_episode, max_iter, epochs, mini_batch_size, epsilon, horizon):
+    def __init__(self, env, agent, max_iter, epochs, mini_batch_size, epsilon, horizon):
         self.env = env
         self.agent = agent
-        self.max_steps_per_episode = max_steps_per_episode
         self.max_iter = max_iter
         self.epsilon = epsilon
         self.horizon = horizon
@@ -60,15 +59,19 @@ class Train:
                 actor_loss = self.compute_ac_loss(ratio, adv)
                 critic_loss = 0.5 * (q_value - value).pow(2).mean()
 
-                total_loss = critic_loss + actor_loss - 0.0 * entropy
-                self.agent.optimize(actor_loss, critic_loss)
+                total_loss = 0.5 * critic_loss + actor_loss - 0.0 * entropy
+
+                # self.agent.optimize(actor_loss, critic_loss)
+                self.agent.optimize(total_loss)
 
                 return total_loss, entropy, rewards
 
     # endregion
 
+    # region equalize_policies
     def equalize_policies(self):
         self.agent.set_weights()
+    #  endregion
 
     def step(self):
         for iter in range(self.max_iter):
@@ -88,6 +91,7 @@ class Train:
             while True:
                 step_counter += 1
 
+                state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
                 action = self.agent.choose_action(state)
                 value = self.agent.get_value(state)
                 next_state, reward, done, _ = self.env.step(action)
@@ -114,10 +118,12 @@ class Train:
                     break
 
             total_loss, entropy, rewards = self.train(states, actions, rewards, dones, values)
-            # self.agent.schedule_lr()
+            self.agent.schedule_lr()
             self.print_logs(total_loss=total_loss, entropy=entropy, rewards=iteration_reward)
+        self.agent.save_weights()
 
-    def get_gae(self, rewards, values, dones, gamma=0.99, lam=0.95):
+    @staticmethod
+    def get_gae(rewards, values, dones, gamma=0.99, lam=0.95):
 
         returns = []
         gae = 0
@@ -160,4 +166,5 @@ class Train:
                   f"Running_reward:{self.global_running_r[-1]:3.3f}| "
                   f"Total_loss:{total_loss.item():3.3f}| "
                   f"Entropy:{entropy.item():3.3f}| "
-                  f"Iter_duration:{time.time() - self.start_time:3.3f}")
+                  f"Iter_duration:{time.time() - self.start_time:3.3f}| "
+                  f"lr:{self.agent.actor_scheduler.get_last_lr()}")

@@ -1,19 +1,18 @@
 import gym
-import pybulletgym
+# import pybulletgym
+import mujoco_py
 from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "HopperPyBulletEnv-v0"
+ENV_NAME = "Hopper-v2"
 test_env = gym.make(ENV_NAME)
 
 n_states = test_env.observation_space.shape
 action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
-# stack_shape = (84, 84, 4)
-max_steps_per_episode = 10000
-max_iter = 15000
+max_iter = 1500
 actor_lr = 3e-4
 critic_lr = 3e-4
 epochs = 10
@@ -38,7 +37,6 @@ if __name__ == "__main__":
     trainer = Train(env=env,
                     agent=agent,
                     horizon=T,
-                    max_steps_per_episode=max_steps_per_episode,
                     max_iter=max_iter,
                     epochs=epochs,
                     mini_batch_size=mini_batch_size,
