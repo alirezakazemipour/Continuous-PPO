@@ -35,9 +35,7 @@ class Agent:
 
         self.actor_scheduler = LambdaLR(self.actor_optimizer, lr_lambda=self.scheduler)
 
-
     def choose_action(self, state):
-
         state = np.expand_dims(state, 0)
         state = from_numpy(state).float().to(self.device)
         dist = self.new_policy_actor(state)
@@ -48,7 +46,6 @@ class Agent:
         return action
 
     def get_value(self, state):
-
         state = np.expand_dims(state, 0)
         state = from_numpy(state).float().to(self.device)
         value = self.critic(state)
@@ -56,7 +53,6 @@ class Agent:
         return value.detach().cpu().numpy()
 
     def optimize(self, actor_loss, critic_loss):
-
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         # torch.nn.utils.clip_grad_norm_(self.new_policy_actor.parameters(), 0.5)
@@ -71,14 +67,11 @@ class Agent:
         self.actor_scheduler.step()
         self.critic_scheduler.step()
 
-
     def set_weights(self):
         for old_params, new_params in zip(self.old_policy_actor.parameters(), self.new_policy_actor.parameters()):
             old_params.data.copy_(new_params.data)
 
     def save_weights(self):
-        # torch.save(self.actor.state_dict(), "./actor_weights.pth")
-        # torch.save(self.critic.state_dict(), "./critic_weights.pth")
         torch.save(self.new_policy_actor.state_dict(), "./weights.pth")
 
     def load_weights(self):

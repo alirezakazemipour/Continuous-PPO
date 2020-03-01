@@ -4,7 +4,7 @@ from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "HopperMuJoCoEnv-v0"
+ENV_NAME = "HopperPyBulletEnv-v0"
 test_env = gym.make(ENV_NAME)
 
 n_states = test_env.observation_space.shape

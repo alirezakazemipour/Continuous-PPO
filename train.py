@@ -114,7 +114,7 @@ class Train:
                     break
 
             total_loss, entropy, rewards = self.train(states, actions, rewards, dones, values)
-            self.agent.schedule_lr()
+            # self.agent.schedule_lr()
             self.print_logs(total_loss=total_loss, entropy=entropy, rewards=iteration_reward)
 
     def get_gae(self, rewards, values, dones, gamma=0.99, lam=0.95):
