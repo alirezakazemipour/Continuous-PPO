@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import time
 from running_mean_std import RunningMeanStd
+from test import evaluate_model
 
 
 class Train:
@@ -118,8 +119,10 @@ class Train:
                     break
 
             total_loss, entropy, rewards = self.train(states, actions, rewards, dones, values)
+            self.equalize_policies()
+            evaluation_rewards = evaluate_model(self.agent, deepcopy(self.env), deepcopy(self.state_rms))
+            self.print_logs(total_loss, entropy, evaluation_rewards)
             self.agent.schedule_lr()
-            self.print_logs(total_loss=total_loss, entropy=entropy, rewards=iteration_reward)
         self.agent.save_weights()
 
     @staticmethod
@@ -162,7 +165,7 @@ class Train:
 
         if self.iteration_counter % 100 == 0:
             print(f"Iter:{self.iteration_counter}| "
-                  f"Iter_Reward:{rewards:3.3f}| "
+                  f"Ep_Reward:{rewards:3.3f}| "
                   f"Running_reward:{self.global_running_r[-1]:3.3f}| "
                   f"Total_loss:{total_loss.item():3.3f}| "
                   f"Entropy:{entropy.item():3.3f}| "
