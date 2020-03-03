@@ -52,22 +52,23 @@ class Train:
 
                 dist = self.agent.new_policy_actor(state)
                 value = self.agent.critic(state)
-                entropy = dist.entropy().mean()
+                with torch.no_grad():
+                    entropy = dist.entropy().mean()
                 new_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, state, action)
                 with torch.no_grad():
                     old_log_prob = self.calculate_log_probs(self.agent.old_policy_actor, state, action)
-                ratio = (new_log_prob - old_log_prob).exp()
-                # print(ratio.mean())
+                # ratio = (new_log_prob - old_log_prob).exp()
+                ratio = torch.exp(new_log_prob) / (torch.exp(old_log_prob) + 1e-8)
 
                 actor_loss = self.compute_ac_loss(ratio, adv)
                 critic_loss = 0.5 * (q_value - value).pow(2).mean()
 
                 total_loss = 1 * critic_loss + actor_loss - 0.0 * entropy
 
-                self.agent.optimize(actor_loss, critic_loss)
-                # self.agent.optimize(total_loss)
+                # self.agent.optimize(actor_loss, critic_loss)
+                self.agent.optimize(total_loss)
 
-            return total_loss, entropy, rewards
+        return total_loss, entropy, rewards
 
     # endregion
 
@@ -87,7 +88,6 @@ class Train:
             rewards = []
             dones = []
             values = []
-            log_probs = []
 
             step_counter = 0
             iteration_reward = 0
@@ -96,7 +96,7 @@ class Train:
             while True:
                 step_counter += 1
 
-                # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
+                state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
                 action = self.agent.choose_action(state)
                 value = self.agent.get_value(state)
                 next_state, reward, done, _ = self.env.step(action)

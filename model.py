@@ -14,7 +14,7 @@ class Actor(nn.Module):
         self.fc2 = nn.Linear(in_features=64, out_features=64)
         self.mu = nn.Linear(in_features=64, out_features=self.n_actions)
 
-        self.log_std = nn.Parameter(torch.zeros((1, self.n_actions)))
+        self.log_std = nn.Parameter(torch.zeros(self.n_actions))
 
         for layer in self.modules():
             if isinstance(layer, nn.Linear):
@@ -41,6 +41,11 @@ class Critic(nn.Module):
         self.fc1 = nn.Linear(in_features=self.n_states, out_features=64)
         self.fc2 = nn.Linear(in_features=64, out_features=64)
         self.value = nn.Linear(in_features=64, out_features=1)
+
+        for layer in self.modules():
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_normal_(layer.weight)
+                layer.bias.data.zero_()
 
     def forward(self, inputs):
         x = inputs
