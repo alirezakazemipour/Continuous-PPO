@@ -1,11 +1,11 @@
 import gym
 # import pybulletgym
-import mujoco_py
+# import mujoco_py
 from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "Hopper-v2"
+ENV_NAME = "Pendulum-v0"
 test_env = gym.make(ENV_NAME)
 
 n_states = test_env.observation_space.shape

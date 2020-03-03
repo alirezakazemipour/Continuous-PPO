@@ -42,6 +42,7 @@ class Train:
         for epoch in range(self.epochs):
             for state, action, q_value, adv in self.choose_mini_batch(self.mini_batch_size,
                                                                       states, actions, returns, advs):
+
                 self.state_rms.update(state)
                 state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
                 state = torch.Tensor(state).to(self.agent.device)
@@ -66,7 +67,7 @@ class Train:
                 self.agent.optimize(actor_loss, critic_loss)
                 # self.agent.optimize(total_loss)
 
-                return total_loss, entropy, rewards
+            return total_loss, entropy, rewards
 
     # endregion
 
@@ -75,6 +76,7 @@ class Train:
         self.agent.set_weights()
     #  endregion
 
+    #  region step
     def step(self):
         for iter in range(self.max_iter):
             self.start_time = time.time()
@@ -94,7 +96,7 @@ class Train:
             while True:
                 step_counter += 1
 
-                state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
+                # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
                 action = self.agent.choose_action(state)
                 value = self.agent.get_value(state)
                 next_state, reward, done, _ = self.env.step(action)
@@ -122,8 +124,9 @@ class Train:
             total_loss, entropy, rewards = self.train(states, actions, rewards, dones, values)
             evaluation_rewards = evaluate_model(self.agent, deepcopy(self.env), deepcopy(self.state_rms))
             self.print_logs(total_loss, entropy, evaluation_rewards)
-            # self.agent.schedule_lr()
+            self.agent.schedule_lr()
         self.agent.save_weights()
+    #  endregion
 
     @staticmethod
     def get_gae(rewards, values, dones, gamma=0.99, lam=0.95):
