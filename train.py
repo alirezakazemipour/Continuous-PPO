@@ -37,13 +37,13 @@ class Train:
         advs = returns - np.vstack(values[:-1])
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         states = np.vstack(states)
+        self.state_rms.update(states)
         actions = np.vstack(actions)
 
         for epoch in range(self.epochs):
             for state, action, q_value, adv in self.choose_mini_batch(self.mini_batch_size,
                                                                       states, actions, returns, advs):
 
-                self.state_rms.update(state)
                 state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
                 state = torch.Tensor(state).to(self.agent.device)
                 action = torch.Tensor(action).to(self.agent.device)
@@ -96,7 +96,7 @@ class Train:
             while True:
                 step_counter += 1
 
-                state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
+                # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
                 action = self.agent.choose_action(state)
                 value = self.agent.get_value(state)
                 next_state, reward, done, _ = self.env.step(action)
