@@ -54,17 +54,17 @@ class Agent:
 
         return value.detach().cpu().numpy()
 
-    def optimize(self, loss):
+    def optimize(self, actor_loss, critic_loss):
         self.actor_optimizer.zero_grad()
-        # actor_loss.backward()
-        loss.backward(retain_graph=True)
-        torch.nn.utils.clip_grad_norm_(self.new_policy_actor.parameters(), 0.5)
+        actor_loss.backward()
+        # loss.backward(retain_graph=True)
+        # torch.nn.utils.clip_grad_norm_(self.new_policy_actor.parameters(), 0.5)
         self.actor_optimizer.step()
 
         self.critic_optimizer.zero_grad()
-        # critic_loss.backward()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
+        critic_loss.backward()
+        # loss.backward()
+        # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
         self.critic_optimizer.step()
 
     def schedule_lr(self):

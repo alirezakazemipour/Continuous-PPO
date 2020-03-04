@@ -14,7 +14,7 @@ class Actor(nn.Module):
         self.fc2 = nn.Linear(in_features=64, out_features=64)
         self.mu = nn.Linear(in_features=64, out_features=self.n_actions)
 
-        self.log_std = nn.Parameter(torch.zeros(self.n_actions))
+        self.log_std = nn.Parameter(torch.ones(1, self.n_actions) * 0.1)
 
         for layer in self.modules():
             if isinstance(layer, nn.Linear):
@@ -26,6 +26,7 @@ class Actor(nn.Module):
         x = torch.tanh(self.fc1(x))
         x = torch.tanh(self.fc2(x))
         mu = self.mu(x)
+        # print(f"mu:{mu}")
 
         std = self.log_std.exp().expand_as(mu)
         dist = normal.Normal(mu, std)
