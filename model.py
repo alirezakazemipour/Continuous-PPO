@@ -26,7 +26,6 @@ class Actor(nn.Module):
         x = torch.tanh(self.fc1(x))
         x = torch.tanh(self.fc2(x))
         mu = self.mu(x)
-        # print(f"mu:{mu}")
 
         std = self.log_std.exp().expand_as(mu)
         dist = normal.Normal(mu, std)

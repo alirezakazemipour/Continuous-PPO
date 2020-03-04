@@ -26,7 +26,7 @@ class Agent:
         self.critic = Critic(n_states=self.n_states).to(self.device)
 
         self.old_policy_actor.load_state_dict(deepcopy(self.new_policy_actor.state_dict()))
-        # self.old_policy_actor.eval()
+        self.old_policy_actor.eval()
 
         self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr, eps=1e-5)
         self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr, eps=1e-5)

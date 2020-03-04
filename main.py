@@ -12,7 +12,6 @@ n_states = test_env.observation_space.shape
 action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
-max_iter = 1500
 actor_lr = 3e-4
 critic_lr = 3e-4
 epochs = 10
@@ -37,7 +36,6 @@ if __name__ == "__main__":
     trainer = Train(env=env,
                     agent=agent,
                     horizon=T,
-                    max_iter=max_iter,
                     epochs=epochs,
                     mini_batch_size=mini_batch_size,
                     epsilon=clip_range
