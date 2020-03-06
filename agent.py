@@ -20,13 +20,7 @@ class Agent:
         self.new_policy_actor = Actor(n_states=self.n_states,
                                       n_actions=self.n_actions).to(self.device)
 
-        self.old_policy_actor = Actor(n_states=self.n_states,
-                                      n_actions=self.n_actions).to(self.device)
-
         self.critic = Critic(n_states=self.n_states).to(self.device)
-
-        self.old_policy_actor.load_state_dict(deepcopy(self.new_policy_actor.state_dict()))
-        self.old_policy_actor.eval()
 
         self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr, eps=1e-5)
         self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr, eps=1e-5)
@@ -40,7 +34,9 @@ class Agent:
     def choose_action(self, state):
         state = np.expand_dims(state, 0)
         state = from_numpy(state).float().to(self.device)
+        self.new_policy_actor.eval()
         dist = self.new_policy_actor(state)
+        self.new_policy_actor.train()
         action = dist.sample().detach().cpu().numpy()
         action = np.squeeze(action, axis=0)
         action = np.clip(action, self.action_bounds[0], self.action_bounds[1])
@@ -50,7 +46,9 @@ class Agent:
     def get_value(self, state):
         state = np.expand_dims(state, 0)
         state = from_numpy(state).float().to(self.device)
+        self.critic.eval()
         value = self.critic(state)
+        self.critic.train()
 
         return value.detach().cpu().numpy()
 
@@ -71,9 +69,9 @@ class Agent:
         self.actor_scheduler.step()
         self.critic_scheduler.step()
 
-    def set_weights(self):
-        for old_params, new_params in zip(self.old_policy_actor.parameters(), self.new_policy_actor.parameters()):
-            old_params.data.copy_(new_params.data)
+    # def set_weights(self):
+    #     for old_params, new_params in zip(self.old_policy_actor.parameters(), self.new_policy_actor.parameters()):
+    #         old_params.data.copy_(new_params.data)
 
     def save_weights(self):
         torch.save(self.new_policy_actor.state_dict(), "./weights.pth")

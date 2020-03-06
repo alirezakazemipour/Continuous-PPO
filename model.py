@@ -1,5 +1,5 @@
 from torch import nn
-from torch.distributions import normal
+from torch.distributions import normal, MultivariateNormal
 import torch
 
 
@@ -14,7 +14,7 @@ class Actor(nn.Module):
         self.fc2 = nn.Linear(in_features=64, out_features=64)
         self.mu = nn.Linear(in_features=64, out_features=self.n_actions)
 
-        self.log_std = nn.Parameter(torch.ones(1, self.n_actions) * -0.5)
+        self.log_std = nn.Parameter(torch.ones(1, self.n_actions) * 0.0)
 
         for layer in self.modules():
             if isinstance(layer, nn.Linear):

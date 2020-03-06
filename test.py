@@ -1,3 +1,5 @@
+import numpy as np
+
 
 def evaluate_model(agent, env, state_rms):
     total_rewards = 0
