@@ -51,26 +51,21 @@ class Train:
 
             for epoch in range(self.epochs):
 
-                # dist = self.agent.new_policy_actor(state)
                 value = self.agent.critic(state)
-                # with torch.no_grad():
-                # entropy = dist.entropy().mean()
-                entropy = 0
                 new_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, state, action)
                 with torch.no_grad():
                     old_log_prob = self.calculate_log_probs(self.agent.old_policy_actor, state, action)
-                # ratio = (new_log_prob - old_log_prob).exp()
                 ratio = torch.exp(new_log_prob) / (torch.exp(old_log_prob) + 1e-8)
 
                 actor_loss = self.compute_actor_loss(ratio, adv)
                 critic_loss = 0.5 * (return_ - value).pow(2).mean()
 
-                total_loss = 1 * critic_loss + actor_loss - 0.0 * entropy
+                total_loss = critic_loss + actor_loss
 
                 self.agent.optimize(actor_loss, critic_loss)
                 # self.agent.optimize(total_loss)
 
-        return total_loss, entropy
+        return total_loss
 
     # endregion
 
@@ -117,9 +112,9 @@ class Train:
                     values.append(next_value)
 
                 self.equalize_policies()
-                loss, entropy = self.train(states, actions, rewards, dones, values)
+                loss = self.train(states, actions, rewards, dones, values)
                 eval_rewards = evaluate_model(deepcopy(self.agent), self.test_env, deepcopy(self.state_rms))
-                self.print_logs(loss, entropy, eval_rewards)
+                self.print_logs(loss, eval_rewards)
 
                 states = []
                 actions = []
@@ -127,6 +122,7 @@ class Train:
                 dones = []
                 values = []
                 self.agent.set_to_eval_mode()
+                self.agent.schedule_lr()
 
             self.time_step += 1
 
@@ -168,17 +164,16 @@ class Train:
         loss = - loss.mean()
         return loss
 
-    def print_logs(self, total_loss, entropy, rewards):
+    def print_logs(self, total_loss, rewards):
         if self.time_step == self.horizon - 1:
             self.global_running_r.append(rewards)
         else:
-            self.global_running_r.append(self.global_running_r[-1] * 0.9 + rewards * 0.1)
+            self.global_running_r.append(self.global_running_r[-1] * 0.99 + rewards * 0.01)
 
-        if self.time_step % 204700 == 0:
-            print(f"Iter:{self.time_step // 2047}| "
+        if self.time_step % ((self.horizon - 1) * 100) == 0:
+            print(f"Iter:{self.time_step // self.horizon -1 }| "
                   f"Ep_Reward:{rewards:3.3f}| "
                   f"Running_reward:{self.global_running_r[-1]:3.3f}| "
                   f"Total_loss:{total_loss.item():3.3f}| "
-                  # f"Entropy:{entropy.item():3.3f}| "
                   f"Iter_duration:{time.time() - self.start_time:3.3f}| "
                   f"lr:{self.agent.actor_scheduler.get_last_lr()}")
