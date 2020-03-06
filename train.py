@@ -32,22 +32,18 @@ class Train:
     # region train
     def train(self, states, actions, rewards, dones, values):
         self.agent.set_to_train_mode()
-        returns = self.get_gae(rewards, deepcopy(values), dones)
 
-        advs = returns - np.vstack(values[:-1])
+        advs = self.get_gae(rewards, deepcopy(values), dones)
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
+        returns = self.get_returns(rewards, dones)
+
         states = np.vstack(states)
         self.state_rms.update(states)
         actions = np.vstack(actions)
 
-        for epoch in range(self.epochs):
-            # print(f"----------Epoch:{epoch}-------------")
-            # i = 0
-            for state, action, return_, adv in self.choose_mini_batch(self.mini_batch_size,
-                                                                      states, actions, returns, advs):
-                # i += 1
-                # print(f"----------Batch idx:{i}-------------")
-
+        for state, action, return_, adv in self.choose_mini_batch(self.mini_batch_size,
+                                                                  states, actions, returns, advs):
+            for epoch in range(self.epochs):
                 # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
                 state = torch.Tensor(state).to(self.agent.device)
                 action = torch.Tensor(action).to(self.agent.device)
@@ -91,6 +87,7 @@ class Train:
         rewards = []
         dones = []
         values = []
+        self.agent.set_to_eval_mode()
 
         while True:
             self.start_time = time.time()
@@ -126,6 +123,7 @@ class Train:
                 rewards = []
                 dones = []
                 values = []
+                self.agent.set_to_eval_mode()
 
             self.time_step += 1
 
@@ -134,13 +132,24 @@ class Train:
     @staticmethod
     def get_gae(rewards, values, dones, gamma=0.99, lam=0.95):
 
-        returns = []
+        advs = []
         gae = 0
 
         for step in reversed(range(len(rewards))):
             delta = rewards[step] + gamma * (values[step + 1]) * (1 - dones[step]) - values[step]
             gae = delta + gamma * lam * (1 - dones[step]) * gae
-            returns.insert(0, gae + values[step])
+            advs.append(gae)
+
+        return np.vstack(advs)
+
+    @staticmethod
+    def get_returns(rewards, dones, gamma=0.99):
+
+        returns = []
+        running_returns = 0
+        for step in reversed(range(len(rewards))):
+            running_returns = rewards[step] + gamma * running_returns * (1 - dones[step])
+            returns.insert(0, running_returns)
 
         return np.vstack(returns)
 
@@ -160,10 +169,10 @@ class Train:
         if self.time_step == self.horizon - 1:
             self.global_running_r.append(rewards)
         else:
-            self.global_running_r.append(self.global_running_r[-1] * 0.99 + rewards * 0.01)
+            self.global_running_r.append(self.global_running_r[-1] * 0.9 + rewards * 0.1)
 
-        if self.time_step % 100 == 0:
-            print(f"Iter:{self.time_step // 100}| "
+        if self.time_step % 204700 == 0:
+            print(f"Iter:{self.time_step // 2047}| "
                   f"Ep_Reward:{rewards:3.3f}| "
                   f"Running_reward:{self.global_running_r[-1]:3.3f}| "
                   f"Total_loss:{total_loss.item():3.3f}| "
