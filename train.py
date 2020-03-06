@@ -43,12 +43,13 @@ class Train:
 
         for state, action, return_, adv in self.choose_mini_batch(self.mini_batch_size,
                                                                   states, actions, returns, advs):
+            # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
+            state = torch.Tensor(state).to(self.agent.device)
+            action = torch.Tensor(action).to(self.agent.device)
+            adv = torch.Tensor(adv).to(self.agent.device)
+            return_ = torch.Tensor(return_).to(self.agent.device).view((self.mini_batch_size, 1))
+
             for epoch in range(self.epochs):
-                # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
-                state = torch.Tensor(state).to(self.agent.device)
-                action = torch.Tensor(action).to(self.agent.device)
-                adv = torch.Tensor(adv).to(self.agent.device)
-                return_ = torch.Tensor(return_).to(self.agent.device).view((self.mini_batch_size, 1))
 
                 # dist = self.agent.new_policy_actor(state)
                 value = self.agent.critic(state)
@@ -104,6 +105,8 @@ class Train:
 
             if done:
                 state = self.env.reset()
+            else:
+                state = next_state
 
             if self.time_step > 0 and self.time_step % (self.horizon - 1) == 0:
                 if done:

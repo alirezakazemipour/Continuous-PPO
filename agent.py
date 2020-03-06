@@ -12,7 +12,7 @@ class Agent:
         self.action_bounds = action_bounds
         self.n_actions = n_actions
         self.n_states = n_states
-        self.device = "cpu"
+        self.device = "cuda"
 
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
