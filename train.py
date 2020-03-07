@@ -43,30 +43,31 @@ class Train:
         actions = np.vstack(actions)
         old_log_probs = np.vstack(old_log_probs)
 
-        for state, action, return_, adv, old_log_prob in self.choose_mini_batch(self.mini_batch_size,
-                                                                                states, actions, returns, advs,
-                                                                                old_log_probs):
-            # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
-            state = torch.Tensor(state).to(self.agent.device)
-            action = torch.Tensor(action).to(self.agent.device)
-            adv = torch.Tensor(adv).to(self.agent.device)
-            old_log_prob = torch.Tensor(old_log_prob).to(self.agent.device)  # .sum(dim=-1)
-            return_ = torch.Tensor(return_).to(self.agent.device).view((self.mini_batch_size, 1))
+        for epoch in range(self.epochs):
 
-            for epoch in range(self.epochs):
+            for state, action, return_, adv, old_log_prob in self.choose_mini_batch(self.mini_batch_size,
+                                                                                    states, actions, returns, advs,
+                                                                                    old_log_probs):
+                # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
+                state = torch.Tensor(state).to(self.agent.device)
+                action = torch.Tensor(action).to(self.agent.device)
+                adv = torch.Tensor(adv).to(self.agent.device)
+                old_log_prob = torch.Tensor(old_log_prob).to(self.agent.device)
+                return_ = torch.Tensor(return_).to(self.agent.device).view((self.mini_batch_size, 1))
+
                 value = self.agent.critic(state)
                 new_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, state, action)
-                ratio = torch.exp(new_log_prob) / (torch.exp(old_log_prob) + 1e-8)
+                ratio = torch.exp(new_log_prob - old_log_prob)
 
                 actor_loss = self.compute_actor_loss(ratio, adv)
-                critic_loss = 0.5 * (return_ - value).pow(2).mean()
+                critic_loss = self.agent.critic_loss(return_, value)
 
                 total_loss = critic_loss + actor_loss
 
-                self.agent.optimize(actor_loss, critic_loss)
-                # self.agent.optimize(total_loss)
+                # self.agent.optimize(actor_loss, critic_loss)
+                self.agent.optimize(total_loss)
 
-        return total_loss
+        return total_loss, actor_loss, critic_loss
 
     # endregion
 
@@ -114,9 +115,9 @@ class Train:
                     next_value = self.agent.get_value(next_state)
                     values.append(next_value)
 
-                loss = self.train(states, actions, rewards, dones, values, log_probs)
+                total_loss, actor_loss, critic_loss = self.train(states, actions, rewards, dones, values, log_probs)
                 eval_rewards = evaluate_model(deepcopy(self.agent), self.test_env, deepcopy(self.state_rms))
-                self.print_logs(loss, eval_rewards)
+                self.print_logs(total_loss, actor_loss, critic_loss, eval_rewards)
 
                 states = []
                 actions = []
@@ -125,7 +126,6 @@ class Train:
                 values = []
                 log_probs = []
                 self.agent.set_to_eval_mode()
-                # self.agent.schedule_lr()
 
             self.time_step += 1
 
@@ -158,7 +158,7 @@ class Train:
     @staticmethod
     def calculate_log_probs(model, states, actions):
         policy_distribution = model(states)
-        return policy_distribution.log_prob(actions)  # .sum(axis=-1)
+        return policy_distribution.log_prob(actions)
 
     def compute_actor_loss(self, ratio, adv):
         r_new = ratio * adv
@@ -167,16 +167,18 @@ class Train:
         loss = - loss.mean()
         return loss
 
-    def print_logs(self, total_loss, rewards):
+    def print_logs(self, total_loss, actor_loss, critic_loss, eval_rewards):
         if self.time_step == self.horizon - 1:
-            self.global_running_r.append(rewards)
+            self.global_running_r.append(eval_rewards)
         else:
-            self.global_running_r.append(self.global_running_r[-1] * 0.99 + rewards * 0.01)
+            self.global_running_r.append(self.global_running_r[-1] * 0.99 + eval_rewards * 0.01)
 
-        if self.time_step % ((self.horizon - 1) * 100) == 0:
-            print(f"Iter:{self.time_step // self.horizon - 1}| "
-                  f"Ep_Reward:{rewards:3.3f}| "
+        if self.time_step % ((self.horizon - 1) * 10) == 0:
+            print(f"Iter:{self.time_step // (self.horizon - 1)}| "
+                  f"Ep_Reward:{eval_rewards:3.3f}| "
                   f"Running_reward:{self.global_running_r[-1]:3.3f}| "
                   f"Total_loss:{total_loss.item():3.3f}| "
+                  f"Actor_Loss:{actor_loss:3.3f}| "
+                  f"Critic_Loss:{critic_loss:3.3f}| "
                   f"Iter_duration:{time.time() - self.start_time:3.3f}| "
                   f"lr:{self.agent.actor_scheduler.get_last_lr()}")
