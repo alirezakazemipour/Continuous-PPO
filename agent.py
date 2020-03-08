@@ -57,9 +57,9 @@ class Agent:
     def optimize(self, loss):
         self.actor_optimizer.zero_grad()
         # actor_loss.backward()
-        loss.backward(retain_graph=True)
+        loss.backward()
         # torch.nn.utils.clip_grad_norm_(self.new_policy_actor.parameters(), 0.5)
-        self.actor_optimizer.step()
+        self.actor_optimizer.step(retain_graph=True)
 
         self.critic_optimizer.zero_grad()
         # critic_loss.backward()

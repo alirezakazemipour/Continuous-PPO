@@ -37,7 +37,7 @@ class Train:
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         returns = self.get_returns(rewards, dones)
         # returns = advs + np.vstack(values[:-1])
-
+        #
         states = np.vstack(states)
         # self.state_rms.update(states)
         actions = np.vstack(actions)
@@ -101,6 +101,7 @@ class Train:
             dones.append(done)
             values.append(value)
             log_probs.append(old_log_prob)
+            # self.env.render()
 
             if done:
                 state = self.env.reset()
@@ -142,6 +143,7 @@ class Train:
             gae = delta + gamma * lam * (1 - dones[step]) * gae
             advs.append(gae)
 
+        advs.reverse()
         return np.vstack(advs)
 
     @staticmethod
