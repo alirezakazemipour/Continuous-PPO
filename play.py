@@ -1,6 +1,7 @@
 import torch
-import gym
 from torch import device
+
+
 class Play:
     def __init__(self, env, agent, max_episode=4000):
         self.env = env

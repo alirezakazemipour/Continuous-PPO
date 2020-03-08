@@ -10,6 +10,7 @@ def evaluate_model(agent, env, state_rms):
         action = agent.choose_action(s)
         next_state, reward, done, _ = env.step(action)
         # env.render()
+        s = next_state
         total_rewards += reward
     env.close()
     return total_rewards
