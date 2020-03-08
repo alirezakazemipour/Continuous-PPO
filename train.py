@@ -23,14 +23,14 @@ class Train:
         self.global_running_r = []
 
     @staticmethod
-    def choose_mini_batch(mini_batch_size, states, actions, returns, advs):
+    def choose_mini_batch(mini_batch_size, states, actions, returns, advs, values):
         full_batch_size = len(states)
         for _ in range(full_batch_size // mini_batch_size):
             indices = np.random.randint(0, full_batch_size, mini_batch_size)
-            yield states[indices], actions[indices], returns[indices], advs[indices]
+            yield states[indices], actions[indices], returns[indices], advs[indices], values[indices]
 
     # region train
-    def train(self, states, actions, returns, dones, advs):
+    def train(self, states, actions, returns, advs, values):
 
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         # returns = self.get_returns(rewards, dones)
@@ -39,19 +39,22 @@ class Train:
         states = np.vstack(states)
         # self.state_rms.update(states)
         actions = np.vstack(actions)
-        # old_log_probs = np.vstack(old_log_probs)
-
+        values = np.vstack(values[:-1])
         for epoch in range(self.epochs):
 
-            for state, action, return_, adv in self.choose_mini_batch(self.mini_batch_size,
-                                                                      states, actions, returns, advs):
+            for state, action, return_, adv, old_value in self.choose_mini_batch(self.mini_batch_size,
+                                                                      states, actions, returns, advs, values):
                 state = torch.Tensor(state).to(self.agent.device)
                 action = torch.Tensor(action).to(self.agent.device)
                 return_ = torch.Tensor(return_).to(self.agent.device)
                 adv = torch.Tensor(adv).to(self.agent.device)
+                old_value = torch.Tensor(old_value).to(self.agent.device)
 
                 value = self.agent.critic(state)
-                critic_loss = self.agent.critic_loss(value, return_)
+                clipped_value = old_value + torch.clamp(value - old_value, -self.epsilon, self.epsilon)
+                clipped_v_loss = self.agent.critic_loss(clipped_value, return_)
+                unclipped_v_loss = self.agent.critic_loss(value, return_)
+                critic_loss = torch.max(clipped_v_loss, unclipped_v_loss)
 
                 new_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, state, action)
                 with torch.no_grad():
@@ -106,9 +109,9 @@ class Train:
             advs = self.get_gae(rewards, values, dones)
             returns = self.get_returns(rewards, dones)
 
-            total_loss, actor_loss, critic_loss = self.train(states, actions, returns, dones, advs)
+            total_loss, actor_loss, critic_loss = self.train(states, actions, returns, advs, values)
             self.agent.set_weights()
-            self.agent.schedule_lr()
+            # self.agent.schedule_lr()
             eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
             self.print_logs(iteration, total_loss, actor_loss, critic_loss, eval_rewards)
 
