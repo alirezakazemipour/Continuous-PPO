@@ -20,6 +20,9 @@ class Agent:
         self.new_policy_actor = Actor(n_states=self.n_states,
                                       n_actions=self.n_actions).to(self.device)
 
+        self.old_policy_actor = Actor(n_states=self.n_states,
+                                      n_actions=self.n_actions).to(self.device)
+
         self.critic = Critic(n_states=self.n_states).to(self.device)
 
         self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr, eps=1e-5)
@@ -57,9 +60,9 @@ class Agent:
     def optimize(self, loss):
         self.actor_optimizer.zero_grad()
         # actor_loss.backward()
-        loss.backward()
+        loss.backward(retain_graph=True)
         # torch.nn.utils.clip_grad_norm_(self.new_policy_actor.parameters(), 0.5)
-        self.actor_optimizer.step(retain_graph=True)
+        self.actor_optimizer.step()
 
         self.critic_optimizer.zero_grad()
         # critic_loss.backward()
@@ -71,9 +74,9 @@ class Agent:
         self.actor_scheduler.step()
         self.critic_scheduler.step()
 
-    # def set_weights(self):
-    #     for old_params, new_params in zip(self.old_policy_actor.parameters(), self.new_policy_actor.parameters()):
-    #         old_params.data.copy_(new_params.data)
+    def set_weights(self):
+        for old_params, new_params in zip(self.old_policy_actor.parameters(), self.new_policy_actor.parameters()):
+            old_params.data.copy_(new_params.data)
 
     def save_weights(self):
         torch.save(self.new_policy_actor.state_dict(), "./weights.pth")

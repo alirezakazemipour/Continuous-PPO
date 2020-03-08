@@ -7,15 +7,15 @@ from test import evaluate_model
 
 
 class Train:
-    def __init__(self, env, agent, epochs, mini_batch_size, epsilon, horizon):
+    def __init__(self, env, n_iterations, agent, epochs, mini_batch_size, epsilon, horizon):
         self.env = env
         self.test_env = deepcopy(env)
         self.agent = agent
         self.epsilon = epsilon
         self.horizon = horizon
-        self.time_step = 0
         self.epochs = epochs
         self.mini_batch_size = mini_batch_size
+        self.n_iterations = n_iterations
 
         self.start_time = 0
         self.state_rms = RunningMeanStd(shape=(self.agent.n_states,))
@@ -23,48 +23,45 @@ class Train:
         self.global_running_r = []
 
     @staticmethod
-    def choose_mini_batch(mini_batch_size, states, actions, returns, advs, probs):
+    def choose_mini_batch(mini_batch_size, states, actions, returns, advs):
         full_batch_size = len(states)
         for _ in range(full_batch_size // mini_batch_size):
             indices = np.random.randint(0, full_batch_size, mini_batch_size)
-            yield states[indices], actions[indices], returns[indices], advs[indices], probs[indices]
+            yield states[indices], actions[indices], returns[indices], advs[indices]
 
     # region train
-    def train(self, states, actions, rewards, dones, values, old_log_probs):
-        self.agent.set_to_train_mode()
+    def train(self, states, actions, returns, dones, advs):
 
-        advs = self.get_gae(rewards, deepcopy(values), dones)
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
-        returns = self.get_returns(rewards, dones)
+        # returns = self.get_returns(rewards, dones)
         # returns = advs + np.vstack(values[:-1])
         #
         states = np.vstack(states)
         # self.state_rms.update(states)
         actions = np.vstack(actions)
-        old_log_probs = np.vstack(old_log_probs)
+        # old_log_probs = np.vstack(old_log_probs)
 
         for epoch in range(self.epochs):
 
-            for state, action, return_, adv, old_log_prob in self.choose_mini_batch(self.mini_batch_size,
-                                                                                    states, actions, returns, advs,
-                                                                                    old_log_probs):
-                # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
+            for state, action, return_, adv in self.choose_mini_batch(self.mini_batch_size,
+                                                                      states, actions, returns, advs):
                 state = torch.Tensor(state).to(self.agent.device)
                 action = torch.Tensor(action).to(self.agent.device)
+                return_ = torch.Tensor(return_).to(self.agent.device)
                 adv = torch.Tensor(adv).to(self.agent.device)
-                old_log_prob = torch.Tensor(old_log_prob).to(self.agent.device)
-                return_ = torch.Tensor(return_).to(self.agent.device).view((self.mini_batch_size, 1))
 
                 value = self.agent.critic(state)
+                critic_loss = self.agent.critic_loss(value, return_)
+
                 new_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, state, action)
+                with torch.no_grad():
+                    old_log_prob = self.calculate_log_probs(self.agent.old_policy_actor, state, action)
+
                 ratio = torch.exp(new_log_prob - old_log_prob)
-
                 actor_loss = self.compute_actor_loss(ratio, adv)
-                critic_loss = self.agent.critic_loss(return_, value)
 
-                total_loss = critic_loss + actor_loss
+                total_loss = actor_loss + critic_loss
 
-                # self.agent.optimize(actor_loss, critic_loss)
                 self.agent.optimize(total_loss)
 
         return total_loss, actor_loss, critic_loss
@@ -75,60 +72,44 @@ class Train:
 
     #  region step
     def step(self):
-        state = self.env.reset()
-        states = []
-        actions = []
-        rewards = []
-        dones = []
-        values = []
-        log_probs = []
-
-        while True:
+        for iteration in range(self.n_iterations):
+            state = self.env.reset()
+            states = []
+            actions = []
+            rewards = []
+            values = []
+            dones = []
             self.start_time = time.time()
+            for t in range(self.horizon):
+                action = self.agent.choose_action(state)
+                value = self.agent.get_value(state)
+                next_state, reward, done, _ = self.env.step(action)
 
-            # state = np.clip((state - self.state_rms.mean) / self.state_rms.var, -5.0, 5.0)
-            action = self.agent.choose_action(state)
-            value = self.agent.get_value(state)[0]
-            next_state, reward, done, _ = self.env.step(action)
-            with torch.no_grad():
-                s = torch.Tensor(state).to(self.agent.device).unsqueeze(dim=0)
-                a = torch.Tensor(action).to(self.agent.device)
-                old_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, s, a).detach().cpu().numpy()[0]
+                states.append(state)
+                actions.append(action)
+                rewards.append(reward)
+                values.append(value)
+                dones.append(done)
 
-            states.append(state)
-            actions.append(action)
-            rewards.append(reward)
-            dones.append(done)
-            values.append(value)
-            log_probs.append(old_log_prob)
-            # self.env.render()
+                if done:
+                    state = self.env.reset()
+                else:
+                    state = next_state
 
             if done:
-                state = self.env.reset()
+                next_value = 0
+                values.append(next_value)
             else:
-                state = next_state
+                next_value = self.agent.get_value(next_state)
+                values.append(next_value)
 
-            if self.time_step > 0 and self.time_step % (self.horizon - 1) == 0:
-                if done:
-                    next_value = 0
-                    values.append(next_value)
-                else:
-                    next_value = self.agent.get_value(next_state)
-                    values.append(next_value)
+            advs = self.get_gae(rewards, values, dones)
+            returns = self.get_returns(rewards, dones)
 
-                total_loss, actor_loss, critic_loss = self.train(states, actions, rewards, dones, values, log_probs)
-                eval_rewards = evaluate_model(deepcopy(self.agent), self.test_env, deepcopy(self.state_rms))
-                self.print_logs(total_loss, actor_loss, critic_loss, eval_rewards)
-
-                states = []
-                actions = []
-                rewards = []
-                dones = []
-                values = []
-                log_probs = []
-                self.agent.set_to_eval_mode()
-
-            self.time_step += 1
+            total_loss, actor_loss, critic_loss = self.train(states, actions, returns, dones, advs)
+            self.agent.set_weights()
+            eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
+            self.print_logs(iteration, total_loss, actor_loss, critic_loss, eval_rewards)
 
     #  endregion
 
@@ -169,14 +150,14 @@ class Train:
         loss = - loss.mean()
         return loss
 
-    def print_logs(self, total_loss, actor_loss, critic_loss, eval_rewards):
-        if self.time_step == self.horizon - 1:
+    def print_logs(self, iteration, total_loss, actor_loss, critic_loss, eval_rewards):
+        if iteration == 0:
             self.global_running_r.append(eval_rewards)
         else:
             self.global_running_r.append(self.global_running_r[-1] * 0.99 + eval_rewards * 0.01)
 
-        if self.time_step % ((self.horizon - 1) * 10) == 0:
-            print(f"Iter:{self.time_step // (self.horizon - 1)}| "
+        if iteration % 10 == 0:
+            print(f"Iter:{iteration}| "
                   f"Ep_Reward:{eval_rewards:3.3f}| "
                   f"Running_reward:{self.global_running_r[-1]:3.3f}| "
                   f"Total_loss:{total_loss.item():3.3f}| "
