@@ -62,7 +62,7 @@ class Train:
 
                 total_loss = actor_loss + critic_loss
 
-                self.agent.optimize(total_loss)
+                self.agent.optimize(actor_loss, critic_loss)
 
         return total_loss, actor_loss, critic_loss
 
