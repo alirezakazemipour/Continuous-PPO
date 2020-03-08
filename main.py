@@ -12,7 +12,7 @@ n_states = test_env.observation_space.shape
 action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
-n_iterations = 1500
+n_iterations = 15000
 actor_lr = 3e-4
 critic_lr = 3e-4
 epochs = 10

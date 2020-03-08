@@ -108,6 +108,7 @@ class Train:
 
             total_loss, actor_loss, critic_loss = self.train(states, actions, returns, dones, advs)
             self.agent.set_weights()
+            self.agent.schedule_lr()
             eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
             self.print_logs(iteration, total_loss, actor_loss, critic_loss, eval_rewards)
 
