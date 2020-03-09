@@ -50,11 +50,11 @@ class Train:
                 old_value = torch.Tensor(old_value).to(self.agent.device)
 
                 value = self.agent.critic(state)
-                # clipped_value = old_value + torch.clamp(value - old_value, -self.epsilon, self.epsilon)
-                # clipped_v_loss = self.agent.critic_loss(clipped_value, return_)
-                # unclipped_v_loss = self.agent.critic_loss(value, return_)
-                # critic_loss = torch.max(clipped_v_loss, unclipped_v_loss)
-                critic_loss = self.agent.critic_loss(value, return_)
+                clipped_value = old_value + torch.clamp(value - old_value, -self.epsilon, self.epsilon)
+                clipped_v_loss = (clipped_value - return_).pow(2)
+                unclipped_v_loss = (value - return_).pow(2)
+                critic_loss = 0.5 * torch.max(clipped_v_loss, unclipped_v_loss).mean()
+                # critic_loss = self.agent.critic_loss(value, return_)
 
                 new_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, state, action)
                 with torch.no_grad():
@@ -63,7 +63,7 @@ class Train:
                 ratio = torch.exp(new_log_prob) / (torch.exp(old_log_prob) + 1e-8)
                 actor_loss = self.compute_actor_loss(ratio, adv)
 
-                total_loss = actor_loss + critic_loss
+                total_loss = actor_loss + critic_loss * 0.5
 
                 self.agent.optimize(total_loss)
 
@@ -84,6 +84,7 @@ class Train:
             dones = []
             self.start_time = time.time()
             for t in range(self.horizon):
+                # state = np.clip((state - self.state_rms.mean) / self.state_rms.var ** 0.5 + 1e-8, -5, 5)
                 action = self.agent.choose_action(state)
                 value = self.agent.get_value(state)
                 next_state, reward, done, _ = self.env.step(action)
@@ -148,10 +149,9 @@ class Train:
         return policy_distribution.log_prob(actions)
 
     def compute_actor_loss(self, ratio, adv):
-        r_new = ratio * adv
-        clamped_r = torch.clamp(ratio, 1 - self.epsilon, 1 + self.epsilon) * adv
-        loss = torch.min(r_new, clamped_r)
-        loss = - loss.mean()
+        pg_loss1 = -adv * ratio
+        pg_loss2 = -adv * torch.clamp(ratio, 1 - self.epsilon, 1 + self.epsilon)
+        loss = torch.max(pg_loss1, pg_loss2).mean()
         return loss
 
     def print_logs(self, iteration, total_loss, actor_loss, critic_loss, eval_rewards):

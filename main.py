@@ -15,9 +15,9 @@ n_actions = test_env.action_space.shape[0]
 n_iterations = 15000
 actor_lr = 3e-4
 critic_lr = 3e-4
-epochs = 10
+epochs = 4
 clip_range = 0.2
-mini_batch_size = 64
+mini_batch_size = 512
 
 T = 2048
 
