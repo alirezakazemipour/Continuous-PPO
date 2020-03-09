@@ -60,7 +60,7 @@ class Train:
                 with torch.no_grad():
                     old_log_prob = self.calculate_log_probs(self.agent.old_policy_actor, state, action)
 
-                ratio = torch.exp(new_log_prob - old_log_prob)
+                ratio = torch.exp(new_log_prob) / (torch.exp(old_log_prob) + 1e-8)
                 actor_loss = self.compute_actor_loss(ratio, adv)
 
                 total_loss = actor_loss + critic_loss
@@ -160,7 +160,7 @@ class Train:
         else:
             self.global_running_r.append(self.global_running_r[-1] * 0.99 + eval_rewards * 0.01)
 
-        if iteration % 10 == 0:
+        if iteration % 30 == 0:
             print(f"Iter:{iteration}| "
                   f"Ep_Reward:{eval_rewards:3.3f}| "
                   f"Running_reward:{self.global_running_r[-1]:3.3f}| "

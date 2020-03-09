@@ -1,6 +1,7 @@
 from torch import nn
 from torch.distributions import normal, MultivariateNormal
 import torch
+from torch.nn import functional as F
 
 
 class Actor(nn.Module):
@@ -23,8 +24,8 @@ class Actor(nn.Module):
 
     def forward(self, inputs):
         x = inputs
-        x = torch.tanh(self.fc1(x))
-        x = torch.tanh(self.fc2(x))
+        x = F.tanh(self.fc1(x))
+        x = F.tanh(self.fc2(x))
         mu = self.mu(x)
 
         std = self.log_std.exp().expand_as(mu)
@@ -49,8 +50,8 @@ class Critic(nn.Module):
 
     def forward(self, inputs):
         x = inputs
-        x = torch.tanh(self.fc1(x))
-        x = torch.tanh(self.fc2(x))
+        x = F.tanh(self.fc1(x))
+        x = F.tanh(self.fc2(x))
         value = self.value(x)
 
         return value
