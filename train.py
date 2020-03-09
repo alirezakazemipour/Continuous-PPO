@@ -32,10 +32,9 @@ class Train:
     # region train
     def train(self, states, actions, returns, advs, values):
 
-        advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         # returns = self.get_returns(rewards, dones)
-        # returns = advs + np.vstack(values[:-1])
-        #
+        returns = advs + np.vstack(values[:-1])
+        advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         states = np.vstack(states)
         # self.state_rms.update(states)
         actions = np.vstack(actions)
@@ -51,10 +50,11 @@ class Train:
                 old_value = torch.Tensor(old_value).to(self.agent.device)
 
                 value = self.agent.critic(state)
-                clipped_value = old_value + torch.clamp(value - old_value, -self.epsilon, self.epsilon)
-                clipped_v_loss = self.agent.critic_loss(clipped_value, return_)
-                unclipped_v_loss = self.agent.critic_loss(value, return_)
-                critic_loss = torch.max(clipped_v_loss, unclipped_v_loss)
+                # clipped_value = old_value + torch.clamp(value - old_value, -self.epsilon, self.epsilon)
+                # clipped_v_loss = self.agent.critic_loss(clipped_value, return_)
+                # unclipped_v_loss = self.agent.critic_loss(value, return_)
+                # critic_loss = torch.max(clipped_v_loss, unclipped_v_loss)
+                critic_loss = self.agent.critic_loss(value, return_)
 
                 new_log_prob = self.calculate_log_probs(self.agent.new_policy_actor, state, action)
                 with torch.no_grad():
@@ -65,7 +65,7 @@ class Train:
 
                 total_loss = actor_loss + critic_loss
 
-                self.agent.optimize(actor_loss, critic_loss)
+                self.agent.optimize(total_loss)
 
         return total_loss, actor_loss, critic_loss
 
@@ -111,7 +111,7 @@ class Train:
 
             total_loss, actor_loss, critic_loss = self.train(states, actions, returns, advs, values)
             self.agent.set_weights()
-            # self.agent.schedule_lr()
+            self.agent.schedule_lr()
             eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
             self.print_logs(iteration, total_loss, actor_loss, critic_loss, eval_rewards)
 
