@@ -1,6 +1,7 @@
 import torch
 from torch import device
-# import gym
+import gym
+import time
 
 
 class Play:
@@ -19,10 +20,12 @@ class Play:
             s = self.env.reset()
             done = False
             episode_reward = 0
+            # x = input("Push any button to proceed...")
             while not done:
                 action = self.agent.choose_action(s)
                 s_, r, done, _ = self.env.step(action)
                 episode_reward += r
                 s = s_
-                self.env.render()
+                self.env.render(mode="human")
+                time.sleep(0.03)
             print(f"episode reward:{episode_reward:3.3f}")
