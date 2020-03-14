@@ -28,11 +28,13 @@ class Agent:
         # self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr, eps=1e-5)
         # self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr, eps=1e-5)
 
-        self.optimizer = Adam(list(self.new_policy_actor.parameters()) + list(self.critic.parameters()), lr=actor_lr)
+        self.optimizer = Adam(list(self.new_policy_actor.parameters()) + list(self.critic.parameters()),
+                              lr=actor_lr,
+                              eps=1e5)
 
         self.critic_loss = torch.nn.MSELoss()
 
-        self.scheduler = lambda step: max(1.0 - float(step * 2048 / 3e+6), 0)
+        self.scheduler = lambda step: max(1.0 - float(step / 500), 0)
         #
         self.scheduler = LambdaLR(self.optimizer, lr_lambda=self.scheduler)
         #

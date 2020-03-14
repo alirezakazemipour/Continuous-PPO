@@ -123,6 +123,8 @@ class Train:
             eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
             self.print_logs(iteration, total_loss, actor_loss, critic_loss, eval_rewards)
 
+        self.agent.save_weights()
+
     #  endregion
 
     @staticmethod
