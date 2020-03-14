@@ -43,8 +43,8 @@ class Train:
         for epoch in range(self.epochs):
 
             for state, action, return_, adv, old_value in self.choose_mini_batch(self.mini_batch_size,
-                                                                      states, actions, returns, advs, values):
-
+                                                                                 states, actions, returns, advs,
+                                                                                 values):
                 state = torch.Tensor(state).to(self.agent.device)
                 action = torch.Tensor(action).to(self.agent.device)
                 return_ = torch.Tensor(return_).to(self.agent.device)
@@ -67,10 +67,10 @@ class Train:
                 ratio = torch.exp(new_log_prob) / (torch.exp(old_log_prob) + 1e-8)
                 actor_loss = self.compute_actor_loss(ratio, adv)
 
-                total_loss = actor_loss + critic_loss #- 0.0 * entropy
+                total_loss = actor_loss + critic_loss  # - 0.0 * entropy
 
-                self.agent.optimize(total_loss)
-                # self.agent.optimize(actor_loss, critic_loss)
+                # self.agent.optimize(total_loss)
+                self.agent.optimize(actor_loss, critic_loss)
 
         return total_loss, actor_loss, critic_loss
 
@@ -118,7 +118,7 @@ class Train:
             self.agent.set_to_train_mode()
             total_loss, actor_loss, critic_loss = self.train(states, actions, returns, advs, values)
             self.agent.set_weights()
-            self.agent.schedule_lr()
+            # self.agent.schedule_lr()
             self.agent.set_to_eval_mode()
             eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
             self.print_logs(iteration, total_loss, actor_loss, critic_loss, eval_rewards)
@@ -177,4 +177,4 @@ class Train:
                   f"Actor_Loss:{actor_loss:3.3f}| "
                   f"Critic_Loss:{critic_loss:3.3f}| "
                   f"Iter_duration:{time.time() - self.start_time:3.3f}| "
-                  f"lr:{self.agent.scheduler.get_last_lr()}")
+                  f"lr:{self.agent.actor_scheduler.get_last_lr()}")

@@ -1,18 +1,18 @@
 import gym
 # import pybulletgym
-# import mujoco_py
+import mujoco_py
 from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "Pendulum-v0"
+ENV_NAME = "Hopper-v2"
 test_env = gym.make(ENV_NAME)
 
 n_states = test_env.observation_space.shape
 action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
-n_iterations = 500
+n_iterations = 1500
 actor_lr = 3e-4
 critic_lr = 3e-4
 epochs = 10
@@ -34,15 +34,15 @@ if __name__ == "__main__":
                   actor_lr=actor_lr,
                   critic_lr=critic_lr)
 
-    # trainer = Train(env=env,
-    #                 agent=agent,
-    #                 horizon=T,
-    #                 n_iterations=n_iterations,
-    #                 epochs=epochs,
-    #                 mini_batch_size=mini_batch_size,
-    #                 epsilon=clip_range
-    #                 )
-    # trainer.step()
+    trainer = Train(env=env,
+                    agent=agent,
+                    horizon=T,
+                    n_iterations=n_iterations,
+                    epochs=epochs,
+                    mini_batch_size=mini_batch_size,
+                    epsilon=clip_range
+                    )
+    trainer.step()
 
     player = Play(env, agent)
     player.evaluate()
