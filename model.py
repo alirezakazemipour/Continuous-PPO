@@ -1,5 +1,5 @@
 from torch import nn
-from torch.distributions import normal, MultivariateNormal
+from torch.distributions import normal
 import torch
 from torch.nn import functional as F
 
@@ -15,11 +15,11 @@ class Actor(nn.Module):
         self.fc2 = nn.Linear(in_features=64, out_features=64)
         self.mu = nn.Linear(in_features=64, out_features=self.n_actions)
 
-        self.log_std = nn.Parameter(torch.ones(1, self.n_actions) * 0.0)
+        self.log_std = nn.Parameter(torch.zeros(1, self.n_actions))
 
         for layer in self.modules():
             if isinstance(layer, nn.Linear):
-                nn.init.xavier_normal_(layer.weight)
+                nn.init.orthogonal_(layer.weight)
                 layer.bias.data.zero_()
 
     def forward(self, inputs):
@@ -28,7 +28,7 @@ class Actor(nn.Module):
         x = F.tanh(self.fc2(x))
         mu = self.mu(x)
 
-        std = self.log_std.exp().expand_as(mu)
+        std = self.log_std.exp()
         dist = normal.Normal(mu, std)
 
         return dist
@@ -45,7 +45,7 @@ class Critic(nn.Module):
 
         for layer in self.modules():
             if isinstance(layer, nn.Linear):
-                nn.init.xavier_normal_(layer.weight)
+                nn.init.orthogonal_(layer.weight)
                 layer.bias.data.zero_()
 
     def forward(self, inputs):

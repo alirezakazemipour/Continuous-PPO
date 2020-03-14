@@ -25,52 +25,53 @@ class Agent:
 
         self.critic = Critic(n_states=self.n_states).to(self.device)
 
-        self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr, eps=1e-5)
-        self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr, eps=1e-5)
+        # self.actor_optimizer = Adam(self.new_policy_actor.parameters(), lr=self.actor_lr, eps=1e-5)
+        # self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr, eps=1e-5)
+
+        self.optimizer = Adam(list(self.new_policy_actor.parameters()) + list(self.critic.parameters()), lr=actor_lr)
 
         self.critic_loss = torch.nn.MSELoss()
 
         self.scheduler = lambda step: max(1.0 - float(step * 2048 / 3e+6), 0)
-
-        self.critic_scheduler = LambdaLR(self.critic_optimizer, lr_lambda=self.scheduler)
-
-        self.actor_scheduler = LambdaLR(self.actor_optimizer, lr_lambda=self.scheduler)
+        #
+        self.scheduler = LambdaLR(self.optimizer, lr_lambda=self.scheduler)
+        #
+        # self.actor_scheduler = LambdaLR(self.actor_optimizer, lr_lambda=self.scheduler)
 
     def choose_action(self, state):
         state = np.expand_dims(state, 0)
         state = from_numpy(state).float().to(self.device)
-        self.new_policy_actor.eval()
         dist = self.new_policy_actor(state)
-        self.new_policy_actor.train()
         action = dist.sample().detach().cpu().numpy()
         action = np.squeeze(action, axis=0)
-        action = np.clip(action, self.action_bounds[0], self.action_bounds[1])
+        # action = np.clip(action, self.action_bounds[0], self.action_bounds[1])
 
         return action
 
     def get_value(self, state):
         state = np.expand_dims(state, 0)
         state = from_numpy(state).float().to(self.device)
-        self.critic.eval()
         value = self.critic(state)
-        self.critic.train()
 
         return value.detach().cpu().numpy()
 
     def optimize(self, loss):
-        self.actor_optimizer.zero_grad()
-        loss.backward(retain_graph=True)
-        torch.nn.utils.clip_grad_norm_(self.new_policy_actor.parameters(), 0.5)
-        self.actor_optimizer.step()
-
-        self.critic_optimizer.zero_grad()
+        # self.actor_optimizer.zero_grad()
+        # actor_loss.backward()
+        # # torch.nn.utils.clip_grad_norm_(self.new_policy_actor.parameters(), 0.5)
+        # self.actor_optimizer.step()
+        #
+        # self.critic_optimizer.zero_grad()
+        # critic_loss.backward()
+        # # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
+        # self.critic_optimizer.step()
+        self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
-        self.critic_optimizer.step()
+        self.optimizer.step()
 
     def schedule_lr(self):
-        self.actor_scheduler.step()
-        self.critic_scheduler.step()
+        self.scheduler.step()
+        # self.critic_scheduler.step()
 
     def set_weights(self):
         for old_params, new_params in zip(self.old_policy_actor.parameters(), self.new_policy_actor.parameters()):

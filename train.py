@@ -34,6 +34,7 @@ class Train:
 
         # returns = self.get_returns(rewards, dones)
         returns = advs + np.vstack(values[:-1])
+        # advs = returns - np.vstack(values[:-1])
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         states = np.vstack(states)
         # self.state_rms.update(states)
@@ -43,12 +44,15 @@ class Train:
 
             for state, action, return_, adv, old_value in self.choose_mini_batch(self.mini_batch_size,
                                                                       states, actions, returns, advs, values):
+
                 state = torch.Tensor(state).to(self.agent.device)
                 action = torch.Tensor(action).to(self.agent.device)
                 return_ = torch.Tensor(return_).to(self.agent.device)
                 adv = torch.Tensor(adv).to(self.agent.device)
                 old_value = torch.Tensor(old_value).to(self.agent.device)
 
+                dist = self.agent.new_policy_actor(state)
+                entropy = dist.entropy().mean()
                 value = self.agent.critic(state)
                 clipped_value = old_value + torch.clamp(value - old_value, -self.epsilon, self.epsilon)
                 clipped_v_loss = (clipped_value - return_).pow(2)
@@ -63,9 +67,10 @@ class Train:
                 ratio = torch.exp(new_log_prob) / (torch.exp(old_log_prob) + 1e-8)
                 actor_loss = self.compute_actor_loss(ratio, adv)
 
-                total_loss = actor_loss + critic_loss * 0.5
+                total_loss = actor_loss + critic_loss #- 0.0 * entropy
 
                 self.agent.optimize(total_loss)
+                # self.agent.optimize(actor_loss, critic_loss)
 
         return total_loss, actor_loss, critic_loss
 
@@ -83,6 +88,7 @@ class Train:
             values = []
             dones = []
             self.start_time = time.time()
+            self.agent.set_to_eval_mode()
             for t in range(self.horizon):
                 # state = np.clip((state - self.state_rms.mean) / self.state_rms.var ** 0.5 + 1e-8, -5, 5)
                 action = self.agent.choose_action(state)
@@ -109,10 +115,11 @@ class Train:
 
             advs = self.get_gae(rewards, values, dones)
             returns = self.get_returns(rewards, dones)
-
+            self.agent.set_to_train_mode()
             total_loss, actor_loss, critic_loss = self.train(states, actions, returns, advs, values)
             self.agent.set_weights()
             self.agent.schedule_lr()
+            self.agent.set_to_eval_mode()
             eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
             self.print_logs(iteration, total_loss, actor_loss, critic_loss, eval_rewards)
 
@@ -146,12 +153,12 @@ class Train:
     @staticmethod
     def calculate_log_probs(model, states, actions):
         policy_distribution = model(states)
-        return policy_distribution.log_prob(actions)
+        return policy_distribution.log_prob(actions).sum(-1, keepdim=True)
 
     def compute_actor_loss(self, ratio, adv):
-        pg_loss1 = -adv * ratio
-        pg_loss2 = -adv * torch.clamp(ratio, 1 - self.epsilon, 1 + self.epsilon)
-        loss = torch.max(pg_loss1, pg_loss2).mean()
+        pg_loss1 = adv * ratio
+        pg_loss2 = adv * torch.clamp(ratio, 1 - self.epsilon, 1 + self.epsilon)
+        loss = -torch.min(pg_loss1, pg_loss2).mean()
         return loss
 
     def print_logs(self, iteration, total_loss, actor_loss, critic_loss, eval_rewards):
@@ -168,4 +175,4 @@ class Train:
                   f"Actor_Loss:{actor_loss:3.3f}| "
                   f"Critic_Loss:{critic_loss:3.3f}| "
                   f"Iter_duration:{time.time() - self.start_time:3.3f}| "
-                  f"lr:{self.agent.actor_scheduler.get_last_lr()}")
+                  f"lr:{self.agent.scheduler.get_last_lr()}")
