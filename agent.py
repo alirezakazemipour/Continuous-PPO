@@ -34,7 +34,7 @@ class Agent:
 
         self.critic_loss = torch.nn.MSELoss()
 
-        self.scheduler = lambda step: max(1.0 - float(step / 1500), 0)
+        self.scheduler = lambda step: max(1.0 - float(step / 3 / 1600), 0)
         #
         self.critic_scheduler = LambdaLR(self.critic_optimizer, lr_lambda=self.scheduler)
         #
@@ -58,7 +58,6 @@ class Agent:
         return value.detach().cpu().numpy()
 
     def optimize(self, actor_loss, critic_loss):
-
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         # torch.nn.utils.clip_grad_norm_(list(self.new_policy_actor.parameters()) + list(self.critic.parameters()), 0.5)
@@ -70,8 +69,8 @@ class Agent:
         self.critic_optimizer.step()
 
     def schedule_lr(self):
-        self.scheduler.step()
-        # self.critic_scheduler.step()
+        self.actor_scheduler.step()
+        self.critic_scheduler.step()
 
     def set_weights(self):
         for old_params, new_params in zip(self.old_policy_actor.parameters(), self.new_policy_actor.parameters()):
