@@ -4,6 +4,7 @@ import numpy as np
 import time
 from running_mean_std import RunningMeanStd
 from test import evaluate_model
+from torch.utils.tensorboard import SummaryWriter
 
 
 class Train:
@@ -176,3 +177,7 @@ class Train:
                   f"Critic_Loss:{critic_loss:3.3f}| "
                   f"Iter_duration:{time.time() - self.start_time:3.3f}| "
                   f"lr:{self.agent.actor_scheduler.get_last_lr()}")
+
+        with SummaryWriter("./logs") as writer:
+            writer.add_scalar("Episode running reward", self.global_running_r[-1], iteration)
+            writer.add_scalar("Episode reward", eval_rewards, iteration)
