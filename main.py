@@ -5,7 +5,7 @@ from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "Hopper-v2"
+ENV_NAME = "Ant-v2"
 test_env = gym.make(ENV_NAME)
 
 n_states = test_env.observation_space.shape
