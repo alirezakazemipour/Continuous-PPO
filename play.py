@@ -12,7 +12,7 @@ class Play:
         self.agent = agent
         self.agent.load_weights()
         self.agent.set_to_eval_mode()
-        self.device = device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device("cpu")
 
     def evaluate(self):
 

@@ -123,6 +123,7 @@ class Train:
             self.agent.set_to_eval_mode()
             eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
             self.print_logs(iteration, total_loss, actor_loss, critic_loss, eval_rewards)
+        self.agent.save_weights()
 
     #  endregion
 
@@ -178,6 +179,8 @@ class Train:
                   f"Iter_duration:{time.time() - self.start_time:3.3f}| "
                   f"lr:{self.agent.actor_scheduler.get_last_lr()}")
 
-        with SummaryWriter("./logs") as writer:
+        with SummaryWriter("./HalfCheetah/logs") as writer:
             writer.add_scalar("Episode running reward", self.global_running_r[-1], iteration)
             writer.add_scalar("Episode reward", eval_rewards, iteration)
+            writer.add_scalar("Actor loss", actor_loss, iteration)
+            writer.add_scalar("Critic loss", critic_loss, iteration)

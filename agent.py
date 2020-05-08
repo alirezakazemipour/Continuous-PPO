@@ -12,7 +12,7 @@ class Agent:
         self.action_bounds = action_bounds
         self.n_actions = n_actions
         self.n_states = n_states
-        self.device = "cpu"
+        self.device = torch.device("cpu")
 
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
@@ -46,7 +46,8 @@ class Agent:
         dist = self.new_policy_actor(state)
         action = dist.sample().detach().cpu().numpy()
         action = np.squeeze(action, axis=0)
-        # action = np.clip(action, self.action_bounds[0], self.action_bounds[1])
+        action *= self.action_bounds[1]
+        action = np.clip(action, self.action_bounds[0], self.action_bounds[1])
 
         return action
 
@@ -77,10 +78,10 @@ class Agent:
             old_params.data.copy_(new_params.data)
 
     def save_weights(self):
-        torch.save(self.new_policy_actor.state_dict(), "./weights.pth")
+        torch.save(self.new_policy_actor.state_dict(), "./HalfCheetah_weights.pth")
 
     def load_weights(self):
-        self.new_policy_actor.load_state_dict(torch.load("./weights.pth"))
+        self.new_policy_actor.load_state_dict(torch.load("./HalfCheetah_weights.pth"))
 
     def set_to_eval_mode(self):
         self.new_policy_actor.eval()

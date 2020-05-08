@@ -5,7 +5,7 @@ from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "Ant-v2"
+ENV_NAME = "HalfCheetah-v2"
 test_env = gym.make(ENV_NAME)
 
 n_states = test_env.observation_space.shape
@@ -25,7 +25,6 @@ if __name__ == "__main__":
     print(f"number of states:{n_states[0]}\n"
           f"action bounds:{action_bounds}\n"
           f"number of actions:{n_actions}")
-    # exit(0)
     env = gym.make(ENV_NAME)
 
     agent = Agent(n_states=n_states[0],
