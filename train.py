@@ -124,7 +124,6 @@ class Train:
             self.agent.set_to_eval_mode()
             eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
             self.print_logs(iteration, total_loss, actor_loss, critic_loss, eval_rewards)
-        self.agent.save_weights()
 
     #  endregion
 
@@ -179,6 +178,7 @@ class Train:
                   f"Critic_Loss:{critic_loss:3.3f}| "
                   f"Iter_duration:{time.time() - self.start_time:3.3f}| "
                   f"lr:{self.agent.actor_scheduler.get_last_lr()}")
+            self.agent.save_weights()
 
         with SummaryWriter(self.env_name + "/logs") as writer:
             writer.add_scalar("Episode running reward", self.global_running_r[-1], iteration)

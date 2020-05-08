@@ -37,9 +37,9 @@ class Agent:
         self.critic_loss = torch.nn.MSELoss()
 
         self.scheduler = lambda step: max(1.0 - float(step / self.n_iter), 0)
-        #
+
         self.critic_scheduler = LambdaLR(self.critic_optimizer, lr_lambda=self.scheduler)
-        #
+
         self.actor_scheduler = LambdaLR(self.actor_optimizer, lr_lambda=self.scheduler)
 
     def choose_action(self, state):

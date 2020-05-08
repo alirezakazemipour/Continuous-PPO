@@ -21,11 +21,15 @@ class Play:
             done = False
             episode_reward = 0
             # x = input("Push any button to proceed...")
-            while not done:
+            for _ in range(self.env._max_episode_steps):
                 action = self.agent.choose_action(s)
                 s_, r, done, _ = self.env.step(action)
                 episode_reward += r
+                if done:
+                    break
                 s = s_
                 self.env.render(mode="human")
                 time.sleep(0.03)
             print(f"episode reward:{episode_reward:3.3f}")
+
+

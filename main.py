@@ -5,7 +5,7 @@ from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "HalfCheetah"
+ENV_NAME = "Swimmer"
 test_env = gym.make(ENV_NAME + "-v2")
 
 n_states = test_env.observation_space.shape[0]
@@ -28,6 +28,7 @@ if __name__ == "__main__":
 
     if not os.path.exists(ENV_NAME):
         os.mkdir(ENV_NAME)
+        os.mkdir(ENV_NAME + "/logs")
 
     env = gym.make(ENV_NAME + "-v2")
 
@@ -46,8 +47,7 @@ if __name__ == "__main__":
                     n_iterations=n_iterations,
                     epochs=epochs,
                     mini_batch_size=mini_batch_size,
-                    epsilon=clip_range
-                    )
+                    epsilon=clip_range)
     trainer.step()
 
     player = Play(env, agent)
