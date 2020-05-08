@@ -8,7 +8,9 @@ from copy import deepcopy
 
 
 class Agent:
-    def __init__(self, n_states, action_bounds, n_actions, actor_lr, critic_lr):
+    def __init__(self, env_name, n_iter, n_states, action_bounds, n_actions, actor_lr, critic_lr):
+        self.env_name = env_name
+        self.n_iter = n_iter
         self.action_bounds = action_bounds
         self.n_actions = n_actions
         self.n_states = n_states
@@ -34,7 +36,7 @@ class Agent:
 
         self.critic_loss = torch.nn.MSELoss()
 
-        self.scheduler = lambda step: max(1.0 - float(step / 1600), 0)
+        self.scheduler = lambda step: max(1.0 - float(step / self.n_iter), 0)
         #
         self.critic_scheduler = LambdaLR(self.critic_optimizer, lr_lambda=self.scheduler)
         #
@@ -61,12 +63,12 @@ class Agent:
     def optimize(self, actor_loss, critic_loss):
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        # torch.nn.utils.clip_grad_norm_(list(self.new_policy_actor.parameters()) + list(self.critic.parameters()), 0.5)
+        torch.nn.utils.clip_grad_norm_(self.new_policy_actor.parameters(), 0.5)
         self.actor_optimizer.step()
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        # torch.nn.utils.clip_grad_norm_(list(self.new_policy_actor.parameters()) + list(self.critic.parameters()), 0.5)
+        torch.nn.utils.clip_grad_norm_(self.critic_loss.parameters(), 0.5)
         self.critic_optimizer.step()
 
     def schedule_lr(self):
@@ -78,10 +80,10 @@ class Agent:
             old_params.data.copy_(new_params.data)
 
     def save_weights(self):
-        torch.save(self.new_policy_actor.state_dict(), "./HalfCheetah_weights.pth")
+        torch.save(self.new_policy_actor.state_dict(), self.env_name + "_weights.pth")
 
     def load_weights(self):
-        self.new_policy_actor.load_state_dict(torch.load("./HalfCheetah_weights.pth"))
+        self.new_policy_actor.load_state_dict(torch.load(self.env_name + "_weights.pth"))
 
     def set_to_eval_mode(self):
         self.new_policy_actor.eval()

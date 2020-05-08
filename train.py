@@ -8,8 +8,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class Train:
-    def __init__(self, env, n_iterations, agent, epochs, mini_batch_size, epsilon, horizon):
+    def __init__(self, env, env_name, n_iterations, agent, epochs, mini_batch_size, epsilon, horizon):
         self.env = env
+        self.env_name = env_name
         self.test_env = deepcopy(env)
         self.agent = agent
         self.epsilon = epsilon
@@ -179,7 +180,7 @@ class Train:
                   f"Iter_duration:{time.time() - self.start_time:3.3f}| "
                   f"lr:{self.agent.actor_scheduler.get_last_lr()}")
 
-        with SummaryWriter("./HalfCheetah/logs") as writer:
+        with SummaryWriter(self.env_name + "/logs") as writer:
             writer.add_scalar("Episode running reward", self.global_running_r[-1], iteration)
             writer.add_scalar("Episode reward", eval_rewards, iteration)
             writer.add_scalar("Actor loss", actor_loss, iteration)

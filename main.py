@@ -1,14 +1,14 @@
 import gym
-# import pybulletgym
+import os
 import mujoco_py
 from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "HalfCheetah-v2"
-test_env = gym.make(ENV_NAME)
+ENV_NAME = "HalfCheetah"
+test_env = gym.make(ENV_NAME + "-v2")
 
-n_states = test_env.observation_space.shape
+n_states = test_env.observation_space.shape[0]
 action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
@@ -22,18 +22,25 @@ mini_batch_size = 64
 T = 2048
 
 if __name__ == "__main__":
-    print(f"number of states:{n_states[0]}\n"
+    print(f"number of states:{n_states}\n"
           f"action bounds:{action_bounds}\n"
           f"number of actions:{n_actions}")
-    env = gym.make(ENV_NAME)
 
-    agent = Agent(n_states=n_states[0],
+    if not os.path.exists(ENV_NAME):
+        os.mkdir(ENV_NAME)
+
+    env = gym.make(ENV_NAME + "-v2")
+
+    agent = Agent(n_states=n_states,
+                  n_iter = n_iterations,
+                  env_name=ENV_NAME,
                   action_bounds=action_bounds,
                   n_actions=n_actions,
                   actor_lr=actor_lr,
                   critic_lr=critic_lr)
 
     trainer = Train(env=env,
+                    env_name=ENV_NAME,
                     agent=agent,
                     horizon=T,
                     n_iterations=n_iterations,
