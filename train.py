@@ -177,7 +177,10 @@ class Train:
                   f"Critic_Loss:{critic_loss:3.3f}| "
                   f"Iter_duration:{time.time() - self.start_time:3.3f}| "
                   f"lr:{self.agent.actor_scheduler.get_last_lr()}")
+            self.agent.save_weights()
 
         with SummaryWriter("./logs") as writer:
             writer.add_scalar("Episode running reward", self.global_running_r[-1], iteration)
             writer.add_scalar("Episode reward", eval_rewards, iteration)
+            writer.add_scalar("Actor loss", actor_loss, iteration)
+            writer.add_scalar("Critic loss", critic_loss, iteration)
