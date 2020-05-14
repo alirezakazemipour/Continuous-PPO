@@ -34,15 +34,14 @@ if __name__ == "__main__":
                   actor_lr=actor_lr,
                   critic_lr=critic_lr)
 
-    trainer = Train(env=env,
-                    agent=agent,
-                    horizon=T,
-                    n_iterations=n_iterations,
-                    epochs=epochs,
-                    mini_batch_size=mini_batch_size,
-                    epsilon=clip_range
-                    )
-    trainer.step()
+    # trainer = Train(env=env,
+    #                 agent=agent,
+    #                 horizon=T,
+    #                 n_iterations=n_iterations,
+    #                 epochs=epochs,
+    #                 mini_batch_size=mini_batch_size,
+    #                 epsilon=clip_range)
+    # trainer.step()
 
-    player = Play(env, agent)
+    player = Play(env, agent, 100)
     player.evaluate()
