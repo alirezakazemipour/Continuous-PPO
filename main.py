@@ -12,9 +12,8 @@ n_states = test_env.observation_space.shape[0]
 action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
-n_iterations = 1600
-actor_lr = 3e-4
-critic_lr = 3e-4
+n_iterations = 10000
+lr = 3e-4
 epochs = 10
 clip_range = 0.2
 mini_batch_size = 64
@@ -33,14 +32,14 @@ if __name__ == "__main__":
     env = gym.make(ENV_NAME + "-v2")
 
     agent = Agent(n_states=n_states,
-                  n_iter = n_iterations,
+                  n_iter=n_iterations,
                   env_name=ENV_NAME,
                   action_bounds=action_bounds,
                   n_actions=n_actions,
-                  actor_lr=actor_lr,
-                  critic_lr=critic_lr)
+                  lr=lr)
 
     trainer = Train(env=env,
+                    test_env=test_env,
                     env_name=ENV_NAME,
                     agent=agent,
                     horizon=T,
