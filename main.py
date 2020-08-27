@@ -5,7 +5,7 @@ from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "Swimmer"
+ENV_NAME = "Walker2d"
 test_env = gym.make(ENV_NAME + "-v2")
 
 n_states = test_env.observation_space.shape[0]

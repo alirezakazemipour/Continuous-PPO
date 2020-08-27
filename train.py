@@ -150,7 +150,7 @@ class Train:
                   f"Critic_Loss:{critic_loss:.3f}| "
                   f"Iter_duration:{time.time() - self.start_time:.3f}| "
                   f"lr:{self.agent.total_scheduler.get_last_lr()}")
-            self.agent.save_weights()
+            self.agent.save_weights(iteration, self.state_rms)
 
         with SummaryWriter(self.env_name + "/logs") as writer:
             writer.add_scalar("Episode running reward", self.running_reward, iteration)

@@ -60,8 +60,14 @@ class Agent:
     def schedule_lr(self):
         self.total_scheduler.step()
 
-    def save_weights(self):
-        torch.save(self.current_policy.state_dict(), self.env_name + "_weights.pth")
+    def save_weights(self, iteration, state_rms):
+        torch.save({"current_policy_state_dict": self.current_policy.state_dict(),
+                    "critic_state_dict": self.critic.state_dict(),
+                    "optimizer_state_dict": self.optimizer.state_dict(),
+                    "scheduler_state_dict": self.total_scheduler.state_dict(),
+                    "iteration": iteration,
+                    "state_rms_mean": state_rms.mean,
+                    "state_rms_var": state_rms.var}, self.env_name + "_weights.pth")
 
     def load_weights(self):
         self.current_policy.load_state_dict(torch.load(self.env_name + "_weights.pth"))
