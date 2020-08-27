@@ -70,7 +70,16 @@ class Agent:
                     "state_rms_var": state_rms.var}, self.env_name + "_weights.pth")
 
     def load_weights(self):
-        self.current_policy.load_state_dict(torch.load(self.env_name + "_weights.pth"))
+        checkpoint = torch.load(self.env_name + "_weights.pth")
+        self.current_policy.load_state_dict(checkpoint["current_policy_state_dict"])
+        self.critic.load_state_dict(checkpoint["critic_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        self.total_scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        iteration = checkpoint["iteration"]
+        state_rms_mean = checkpoint["state_rms_mean"]
+        state_rms_var = checkpoint["state_rms_var"]
+
+        return iteration, state_rms_mean, state_rms_var
 
     def set_to_eval_mode(self):
         self.current_policy.eval()
