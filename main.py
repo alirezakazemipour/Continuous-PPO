@@ -12,7 +12,7 @@ n_states = test_env.observation_space.shape[0]
 action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
-n_iterations = 10000
+n_iterations = 2000
 lr = 3e-4
 epochs = 10
 clip_range = 0.2
@@ -49,5 +49,5 @@ if __name__ == "__main__":
                     epsilon=clip_range)
     trainer.step()
 
-    player = Play(env, agent)
+    player = Play(env, agent, trainer.state_rms)
     player.evaluate()

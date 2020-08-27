@@ -80,6 +80,7 @@ class Train:
                 state = np.clip((state - self.state_rms.mean) / (self.state_rms.var ** 0.5 + 1e-8), -5, 5)
                 dist = self.agent.choose_dist(state)
                 action = dist.sample().cpu().numpy()[0]
+                # action = np.clip(action, self.agent.action_bounds[0], self.agent.action_bounds[1])
                 log_prob = dist.log_prob(torch.Tensor(action))
                 value = self.agent.get_value(state)
                 next_state, reward, done, _ = self.env.step(action)
@@ -105,7 +106,7 @@ class Train:
             actor_loss, critic_loss = self.train(states, actions, advs, values, log_probs)
             # self.agent.set_weights()
             self.agent.schedule_lr()
-            eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms)
+            eval_rewards = evaluate_model(self.agent, self.test_env, self.state_rms, self.agent.action_bounds)
             self.state_rms.update(states)
             self.print_logs(iteration, actor_loss, critic_loss, eval_rewards)
 
