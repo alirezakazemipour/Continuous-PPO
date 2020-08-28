@@ -17,7 +17,6 @@ eggs/
 .idea/
 *.txt
 vid/
-logs/
 lib/
 lib64/
 parts/

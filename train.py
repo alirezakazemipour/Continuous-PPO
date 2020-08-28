@@ -50,17 +50,18 @@ class Train:
                 old_log_prob = torch.Tensor(old_log_prob).to(self.agent.device)
 
                 value = self.agent.critic(state)
-                clipped_value = old_value + torch.clamp(value - old_value, -self.epsilon, self.epsilon)
-                clipped_v_loss = (clipped_value - return_).pow(2)
-                unclipped_v_loss = (value - return_).pow(2)
-                critic_loss = 0.5 * torch.max(clipped_v_loss, unclipped_v_loss).mean()
+                # clipped_value = old_value + torch.clamp(value - old_value, -self.epsilon, self.epsilon)
+                # clipped_v_loss = (clipped_value - return_).pow(2)
+                # unclipped_v_loss = (value - return_).pow(2)
+                # critic_loss = 0.5 * torch.max(clipped_v_loss, unclipped_v_loss).mean()
+                critic_loss = self.agent.critic_loss(value, return_)
 
                 new_log_prob = self.calculate_log_probs(self.agent.current_policy, state, action)
 
                 ratio = (new_log_prob - old_log_prob).exp()
                 actor_loss = self.compute_actor_loss(ratio, adv)
 
-                self.agent.optimize(actor_loss + critic_loss)
+                self.agent.optimize(actor_loss, critic_loss)
 
         return actor_loss, critic_loss
 
@@ -149,7 +150,7 @@ class Train:
                   f"Actor_Loss:{actor_loss:.3f}| "
                   f"Critic_Loss:{critic_loss:.3f}| "
                   f"Iter_duration:{time.time() - self.start_time:.3f}| "
-                  f"lr:{self.agent.total_scheduler.get_last_lr()}")
+                  f"lr:{self.agent.actor_scheduler.get_last_lr()}")
             self.agent.save_weights(iteration, self.state_rms)
 
         with SummaryWriter(self.env_name + "/logs") as writer:

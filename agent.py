@@ -14,22 +14,21 @@ class Agent:
         self.n_actions = n_actions
         self.n_states = n_states
         self.device = torch.device("cpu")
-
         self.lr = lr
 
         self.current_policy = Actor(n_states=self.n_states,
                                     n_actions=self.n_actions).to(self.device)
-
         self.critic = Critic(n_states=self.n_states).to(self.device)
 
-        self.optimizer = Adam(list(self.current_policy.parameters()) + list(self.critic.parameters()), lr=self.lr,
-                              eps=1e-5)
+        self.actor_optimizer = Adam(self.current_policy.parameters(), lr=self.lr, eps=1e-5)
+        self.critic_optimizer = Adam(self.critic.parameters(), lr=self.lr, eps=1e-5)
 
         self.critic_loss = torch.nn.MSELoss()
 
         self.scheduler = lambda step: max(1.0 - float(step / self.n_iter), 0)
 
-        self.total_scheduler = LambdaLR(self.optimizer, lr_lambda=self.scheduler)
+        self.actor_scheduler = LambdaLR(self.actor_optimizer, lr_lambda=self.scheduler)
+        self.critic_scheduler = LambdaLR(self.actor_optimizer, lr_lambda=self.scheduler)
 
     def choose_dist(self, state):
         state = np.expand_dims(state, 0)
@@ -50,21 +49,31 @@ class Agent:
 
         return value.detach().cpu().numpy()
 
-    def optimize(self, loss):
-        self.optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.current_policy.parameters(), 0.5)
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
-        self.optimizer.step()
+    def optimize(self, actor_loss, critic_loss):
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        # torch.nn.utils.clip_grad_norm_(self.current_policy.parameters(), 0.5)
+        # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
+        self.actor_optimizer.step()
+
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        # torch.nn.utils.clip_grad_norm_(self.current_policy.parameters(), 0.5)
+        # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
+        self.critic_optimizer.step()
 
     def schedule_lr(self):
-        self.total_scheduler.step()
+        # self.total_scheduler.step()
+        self.actor_scheduler.step()
+        self.critic_scheduler.step()
 
     def save_weights(self, iteration, state_rms):
         torch.save({"current_policy_state_dict": self.current_policy.state_dict(),
                     "critic_state_dict": self.critic.state_dict(),
-                    "optimizer_state_dict": self.optimizer.state_dict(),
-                    "scheduler_state_dict": self.total_scheduler.state_dict(),
+                    "actor_optimizer_state_dict": self.actor_optimizer.state_dict(),
+                    "critic_optimizer_state_dict": self.critic_optimizer.state_dict(),
+                    "actor_scheduler_state_dict": self.actor_scheduler.state_dict(),
+                    "critic_scheduler_state_dict": self.critic_scheduler.state_dict(),
                     "iteration": iteration,
                     "state_rms_mean": state_rms.mean,
                     "state_rms_var": state_rms.var}, self.env_name + "_weights.pth")
@@ -73,8 +82,10 @@ class Agent:
         checkpoint = torch.load(self.env_name + "_weights.pth")
         self.current_policy.load_state_dict(checkpoint["current_policy_state_dict"])
         self.critic.load_state_dict(checkpoint["critic_state_dict"])
-        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        self.total_scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        self.actor_optimizer.load_state_dict(checkpoint["actor_optimizer_state_dict"])
+        self.critic_optimizer.load_state_dict(checkpoint["critic_optimizer_state_dict"])
+        self.actor_scheduler.load_state_dict(checkpoint["actor_scheduler_state_dict"])
+        self.critic_scheduler.load_state_dict(checkpoint["critic_scheduler_state_dict"])
         iteration = checkpoint["iteration"]
         state_rms_mean = checkpoint["state_rms_mean"]
         state_rms_var = checkpoint["state_rms_var"]
