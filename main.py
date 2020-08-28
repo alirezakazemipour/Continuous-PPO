@@ -12,7 +12,7 @@ n_states = test_env.observation_space.shape[0]
 action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
-n_iterations = 500
+n_iterations = 1500
 lr = 3e-4
 epochs = 10
 clip_range = 0.2

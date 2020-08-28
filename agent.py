@@ -76,7 +76,8 @@ class Agent:
                     "critic_scheduler_state_dict": self.critic_scheduler.state_dict(),
                     "iteration": iteration,
                     "state_rms_mean": state_rms.mean,
-                    "state_rms_var": state_rms.var}, self.env_name + "_weights.pth")
+                    "state_rms_var": state_rms.var,
+                    "state_rms_count": state_rms.count}, self.env_name + "_weights.pth")
 
     def load_weights(self):
         checkpoint = torch.load(self.env_name + "_weights.pth")
