@@ -5,14 +5,15 @@ from agent import Agent
 from train import Train
 from play import Play
 
-ENV_NAME = "Humanoid"
+ENV_NAME = "Swimmer"
+TRAIN_FLAG = False
 test_env = gym.make(ENV_NAME + "-v2")
 
 n_states = test_env.observation_space.shape[0]
 action_bounds = [test_env.action_space.low[0], test_env.action_space.high[0]]
 n_actions = test_env.action_space.shape[0]
 
-n_iterations = 1500
+n_iterations = 500
 lr = 3e-4
 epochs = 10
 clip_range = 0.2
@@ -36,17 +37,17 @@ if __name__ == "__main__":
                   action_bounds=action_bounds,
                   n_actions=n_actions,
                   lr=lr)
+    if TRAIN_FLAG:
+        trainer = Train(env=env,
+                        test_env=test_env,
+                        env_name=ENV_NAME,
+                        agent=agent,
+                        horizon=T,
+                        n_iterations=n_iterations,
+                        epochs=epochs,
+                        mini_batch_size=mini_batch_size,
+                        epsilon=clip_range)
+        trainer.step()
 
-    trainer = Train(env=env,
-                    test_env=test_env,
-                    env_name=ENV_NAME,
-                    agent=agent,
-                    horizon=T,
-                    n_iterations=n_iterations,
-                    epochs=epochs,
-                    mini_batch_size=mini_batch_size,
-                    epsilon=clip_range)
-    trainer.step()
-
-    player = Play(env, agent, )
+    player = Play(env, agent, ENV_NAME)
     player.evaluate()

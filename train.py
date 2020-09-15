@@ -67,7 +67,7 @@ class Train:
 
     def step(self):
         state = self.env.reset()
-        for iteration in range(self.n_iterations):
+        for iteration in range(1, 1 + self.n_iterations):
             states = []
             actions = []
             rewards = []
@@ -138,7 +138,7 @@ class Train:
         return loss
 
     def print_logs(self, iteration, actor_loss, critic_loss, eval_rewards):
-        if iteration == 0:
+        if iteration == 1:
             self.running_reward = eval_rewards
         else:
             self.running_reward = self.running_reward * 0.99 + eval_rewards * 0.01

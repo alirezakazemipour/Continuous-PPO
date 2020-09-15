@@ -80,7 +80,7 @@ class Agent:
                     "state_rms_count": state_rms.count}, self.env_name + "_weights.pth")
 
     def load_weights(self):
-        checkpoint = torch.load(self.env_name + "_weights.pth")
+        checkpoint = torch.load(self.env_name + "/" + self.env_name + "_weights.pth")
         self.current_policy.load_state_dict(checkpoint["current_policy_state_dict"])
         self.critic.load_state_dict(checkpoint["critic_state_dict"])
         self.actor_optimizer.load_state_dict(checkpoint["actor_optimizer_state_dict"])
