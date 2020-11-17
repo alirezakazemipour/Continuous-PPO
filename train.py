@@ -119,8 +119,8 @@ class Train:
 
         dones.append(0)
         for step in reversed(range(len(rewards))):
-            delta = rewards[step] + gamma * (values[step + 1]) * (1 - dones[step + 1]) - values[step]
-            gae = delta + gamma * lam * (1 - dones[step + 1]) * gae
+            delta = rewards[step] + gamma * (values[step + 1]) * (1 - dones[step]) - values[step]
+            gae = delta + gamma * lam * (1 - dones[step]) * gae
             advs.append(gae)
 
         advs.reverse()
