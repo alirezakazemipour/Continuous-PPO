@@ -1,4 +1,4 @@
-# Mujoco-PPO
+# Continuous-PPO
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)  
 Implementation of the proximal policy optimization on Mujoco environments. All hyper-parameters have been chosen based on the paper.
 > For Atari domain. [look at this](https://github.com/alirezakazemipour/Proximal-Policy-Optimization).  
