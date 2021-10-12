@@ -3,5 +3,5 @@
 gym == 0.17.2
 mujoco-py == 2.0.2.13
 numpy == 1.19.1
-opencv_contrib_python == 3.4.0.12
+opencv_contrib_python == 4.2.0.32
 torch == 1.4.0
